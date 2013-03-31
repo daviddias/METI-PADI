@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace CommonTypes
 {
-    public class Class1
+    class remoteMetaDataServer
     {
     }
 }
