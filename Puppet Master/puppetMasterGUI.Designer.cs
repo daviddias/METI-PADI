@@ -29,10 +29,10 @@
         private void InitializeComponent()
         {
             this.openScriptFile = new System.Windows.Forms.Button();
-            this.textBox1 = new System.Windows.Forms.TextBox();
+            this.scriptTextBox = new System.Windows.Forms.TextBox();
             this.runScript = new System.Windows.Forms.Button();
-            this.button1 = new System.Windows.Forms.Button();
-            this.textBox2 = new System.Windows.Forms.TextBox();
+            this.runNextStep = new System.Windows.Forms.Button();
+            this.currentStep = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.textBox4 = new System.Windows.Forms.TextBox();
@@ -49,13 +49,13 @@
             this.openScriptFile.UseVisualStyleBackColor = true;
             this.openScriptFile.Click += new System.EventHandler(this.openScriptFile_Click);
             // 
-            // textBox1
+            // scriptTextBox
             // 
-            this.textBox1.Location = new System.Drawing.Point(124, 12);
-            this.textBox1.Multiline = true;
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(249, 288);
-            this.textBox1.TabIndex = 1;
+            this.scriptTextBox.Location = new System.Drawing.Point(124, 12);
+            this.scriptTextBox.Multiline = true;
+            this.scriptTextBox.Name = "scriptTextBox";
+            this.scriptTextBox.Size = new System.Drawing.Size(410, 288);
+            this.scriptTextBox.TabIndex = 1;
             // 
             // runScript
             // 
@@ -66,21 +66,22 @@
             this.runScript.Text = "Run Script";
             this.runScript.UseVisualStyleBackColor = true;
             // 
-            // button1
+            // runNextStep
             // 
-            this.button1.Location = new System.Drawing.Point(13, 71);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(105, 23);
-            this.button1.TabIndex = 3;
-            this.button1.Text = "Run Next Step";
-            this.button1.UseVisualStyleBackColor = true;
+            this.runNextStep.Location = new System.Drawing.Point(13, 71);
+            this.runNextStep.Name = "runNextStep";
+            this.runNextStep.Size = new System.Drawing.Size(105, 23);
+            this.runNextStep.TabIndex = 3;
+            this.runNextStep.Text = "Run Next Step";
+            this.runNextStep.UseVisualStyleBackColor = true;
+            this.runNextStep.Click += new System.EventHandler(this.runNextStep_Click);
             // 
-            // textBox2
+            // currentStep
             // 
-            this.textBox2.Location = new System.Drawing.Point(379, 12);
-            this.textBox2.Name = "textBox2";
-            this.textBox2.Size = new System.Drawing.Size(249, 20);
-            this.textBox2.TabIndex = 4;
+            this.currentStep.Location = new System.Drawing.Point(543, 12);
+            this.currentStep.Name = "currentStep";
+            this.currentStep.Size = new System.Drawing.Size(410, 20);
+            this.currentStep.TabIndex = 4;
             // 
             // label1
             // 
@@ -94,7 +95,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(379, 35);
+            this.label2.Location = new System.Drawing.Point(540, 35);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(66, 13);
             this.label2.TabIndex = 6;
@@ -102,16 +103,16 @@
             // 
             // textBox4
             // 
-            this.textBox4.Location = new System.Drawing.Point(379, 52);
+            this.textBox4.Location = new System.Drawing.Point(543, 51);
             this.textBox4.Multiline = true;
             this.textBox4.Name = "textBox4";
-            this.textBox4.Size = new System.Drawing.Size(249, 248);
+            this.textBox4.Size = new System.Drawing.Size(410, 248);
             this.textBox4.TabIndex = 8;
             // 
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(379, 303);
+            this.label3.Location = new System.Drawing.Point(540, 303);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(39, 13);
             this.label3.TabIndex = 9;
@@ -121,15 +122,15 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(786, 420);
+            this.ClientSize = new System.Drawing.Size(1072, 420);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.textBox4);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
-            this.Controls.Add(this.textBox2);
-            this.Controls.Add(this.button1);
+            this.Controls.Add(this.currentStep);
+            this.Controls.Add(this.runNextStep);
             this.Controls.Add(this.runScript);
-            this.Controls.Add(this.textBox1);
+            this.Controls.Add(this.scriptTextBox);
             this.Controls.Add(this.openScriptFile);
             this.Name = "puppetMasterGUI";
             this.Text = "padiFS - Puppet Master";
@@ -141,10 +142,10 @@
         #endregion
 
         private System.Windows.Forms.Button openScriptFile;
-        private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.TextBox scriptTextBox;
         private System.Windows.Forms.Button runScript;
-        private System.Windows.Forms.Button button1;
-        private System.Windows.Forms.TextBox textBox2;
+        private System.Windows.Forms.Button runNextStep;
+        private System.Windows.Forms.TextBox currentStep;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.TextBox textBox4;

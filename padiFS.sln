@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Meta-Data Server", "Meta-Da
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Data-Server", "Data-Server\Data-Server.csproj", "{93CD8790-50F9-430E-8E2B-83F5CCC7EBA6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Puppet Master", "Puppet Master\Puppet Master.csproj", "{D0DBF136-2BD1-4E4D-8D83-3D7010B875AE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Puppet-Master", "Puppet Master\Puppet-Master.csproj", "{D0DBF136-2BD1-4E4D-8D83-3D7010B875AE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommonTypes", "CommonTypes\CommonTypes.csproj", "{4EF5E071-57EB-428A-8CDE-D233EE5C89FD}"
 EndProject
