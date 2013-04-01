@@ -14,13 +14,22 @@ Items marked as "✔" are complete and tested
     <tr><th>Object / Feature</th><th>Status</th><th>Notes</th></tr>
   </thead>
   <tbody>
-    <tr> <td>- Example</td> <td>✔</td> <td>Notes about this task</td> </tr>
-    <tr> <td>Client</td> <td> </td><td> </td></tr>
-    <tr> <td>- Task to do</td><td> </td><td> </td></tr>
-    <tr> <td>Meta-Data Server</td><td> </td><td> </td></tr>
-    <tr> <td>- line caps/joins - line width, cap, join, miter limit</td><td>✔</td><td> </td></tr>
-    <tr> <td>Data-Server</td><td> </td><td> </td></tr>
-    <tr> <td>Puppet Master</td><td> </td><td> </td></tr>
+    <tr> <td>Puppet Master                       </td> <td>    </td><td>     </td></tr>
+    <tr> <td>- UI                                </td> <td>✔   </td><td>    </td></tr>
+    <tr> <td>- Load Scripts                      </td> <td>✔   </td><td>    </td></tr>
+    <tr> <td>- Execute Script Step by Step       </td> <td>✔   </td><td>    </td></tr>
+    <tr> <td>- Start all other process           </td> <td>✔   </td><td>    </td></tr>
+    <tr> <td>- Get Remote Object References      </td> <td>     </td><td>    </td></tr>
+    
+    <tr> <td>Client                              </td> <td>    </td><td>     </td></tr>
+    <tr> <td>-                                   </td> <td>     </td><td>    </td></tr>
+    
+    <tr> <td>Meta-Data Server                    </td> <td>    </td><td>     </td></tr>
+    <tr> <td>-                                   </td> <td>    </td><td>     </td></tr>
+    
+    <tr> <td>Data-Server                         </td> <td>    </td><td>     </td></tr>
+    <tr> <td>-                                   </td> <td>    </td><td>     </td></tr>
+    
     
   </tbody>
 </table>
