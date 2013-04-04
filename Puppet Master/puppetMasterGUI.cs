@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -8,11 +9,31 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Threading;
 
 namespace Puppet_Master
 {
     public partial class puppetMasterGUI : Form
     {
+        /****************************************************************************************
+         *                                  Attributes
+         ****************************************************************************************/
+        
+        int firstMetaServerPort = 8000;
+        int firstClientPort = 8100;
+        int firstDataServerPort = 9000;
+
+        // Dictonary of Running Processes Key=processID (e.g. c-1) Value=Process
+        public Dictionary<string, Process> runningProcesses = new Dictionary<string, Process>();
+
+
+
+
+        /****************************************************************************************
+        *                                  GUI functions
+        ****************************************************************************************/
+
+
         public puppetMasterGUI()
         {
             InitializeComponent();
@@ -53,7 +74,7 @@ namespace Puppet_Master
             //Process it
             String[] lines = scriptTextBox.Lines;
             try { if (lines[0] == "") { return; } }
-            catch (IndexOutOfRangeException e) {  return;  }
+            catch (IndexOutOfRangeException) {  return;  }
             String nextSept = lines[0];
             lines = lines.Where((val, idx) => idx != 0).ToArray();
             scriptTextBox.Lines = lines;
@@ -84,25 +105,65 @@ namespace Puppet_Master
             //Start DataServers
             //Start Meta-Data Servers (3)
             //Start Clients
+            String dataServerPath = Environment.CurrentDirectory.Replace("Puppet Master", "Data-Server");
+            dataServerPath += "/Data-Server.exe";
+            String metaServerPath = Environment.CurrentDirectory.Replace("Puppet Master", "Meta-Data Server");
+            metaServerPath += "/Meta-Data Server.exe";
+            String clientPath = Environment.CurrentDirectory.Replace("Puppet Master", "Client");
+            clientPath += "/Client.exe";
 
+            //outputBox.Text = dataServerPath;    
 
-            string currentDirectory = Environment.CurrentDirectory;
-            string path = currentDirectory.Replace("Puppet Master", 
+            String listOfDataServerPorts = "";
+            String listOfMetaServerPorts = "";
+            String listOfClientPorts = "";
+
+            //Data-Servers - Args <PortLocal>
+            for (int i = 0; i < nbDataServers; i++)
+            {
+                runningProcesses.Add("d-" + i , new Process());
+                runningProcesses["d-" + i].StartInfo.Arguments = (firstDataServerPort + i).ToString();
+                listOfDataServerPorts += (firstDataServerPort + i).ToString() + " ";
+                runningProcesses["d-" + i].StartInfo.FileName = dataServerPath;
+                runningProcesses["d-" + i].Start();
+            }
+
+            //Meta-Data Servers - Args <MetaDataPortLocal> <MetaDataPortOtherA> <MetaDataPortOtherB> [DataServerPort] [DataServer Port] [DataServer Port]...
+            String meta0 = (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 2).ToString();
+            runningProcesses.Add("m-" + 0, new Process());
+            runningProcesses["m-" + 0].StartInfo.Arguments = meta0 + listOfDataServerPorts;
+            runningProcesses["m-" + 0].StartInfo.FileName = metaServerPath;
+            runningProcesses["m-" + 0].Start();
+            
+            String meta1 = (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 2).ToString();
+            runningProcesses.Add("m-" + 1, new Process());
+            runningProcesses["m-" + 1].StartInfo.Arguments = meta1 + listOfDataServerPorts;
+            runningProcesses["m-" + 1].StartInfo.FileName = metaServerPath;
+            runningProcesses["m-" + 1].Start();
+
+            String meta2 = (firstMetaServerPort + 2).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString();
+            runningProcesses.Add("m-" + 2, new Process());
+            runningProcesses["m-" + 2].StartInfo.Arguments = meta2 + listOfDataServerPorts;
+            runningProcesses["m-" + 2].StartInfo.FileName = metaServerPath;
+            runningProcesses["m-" + 2].Start();
+            
+            listOfMetaServerPorts = meta0; //Meta0 Contem a ordem certa de Meta-Servers que corresponde as responsabilidades para serem entregues aos clientes
+
+            //Clients - Args <clientPort> <meta0Port> <meta1Port> <meta2Port> 
+            for (int k = 0; k < nbClients; k++)
+            {
+                runningProcesses.Add("c-" + k, new Process());
+                runningProcesses["c-" + k].StartInfo.Arguments = (firstClientPort + k).ToString() + listOfMetaServerPorts;
+                listOfClientPorts += (firstClientPort + k).ToString() + " ";
+                runningProcesses["c-" + k].StartInfo.FileName = clientPath;
+                runningProcesses["c-" + k].Start();
+            }
+
+            //Now let's get all Remote References =) 
 
             
-            /*
-        private void startServer(int n, int port)
-        {
-            runningServers.Add(n, new Process());
-            string currentDirectory = Environment.CurrentDirectory;
-            string path = currentDirectory.Replace("PuppetMaster", "Server");
-            path += "/Server.exe";
-            runningServers[n].StartInfo.Arguments = port.ToString() ;
-            runningServers[n].StartInfo.FileName = path;
-            runningServers[n].Start();
-            numberOfServers++;
-        }
-*/
+
+
 
         }
 

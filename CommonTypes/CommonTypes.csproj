@@ -40,6 +40,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FileHandler.cs" />
     <Compile Include="remoteClient.cs" />
     <Compile Include="remoteDataServer.cs" />
     <Compile Include="remoteMetaDataServer.cs" />
