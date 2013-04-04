@@ -1,19 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Security.Cryptography;
 using System.IO;
+using System.Runtime.Serialization.Formatters;
 
-class Client : clientInterface
+class Client
 {
-    public const string MS1_Address = "localhost:8081/MyRemoteMetaDataObjectName";
-    public const string DS1_Address = "localhost:7081/MyRemoteDataObjectName";
-
-    public const int DEFAULT = 1;
-    public const int MONOTONIC = 2;
 
     public static MyRemoteMetaDataInterface connectMetaServer(string address)
     {
@@ -65,16 +61,19 @@ class Client : clientInterface
         return encoding.GetBytes(str);
     }
 
-    //usado pelo puppet-master
-    public void open(string filename) { }
-    public void create(string filename) { }
-    public void delete(string filename) { }
-    public void write(string filename, byte[] byte_array) { }
-
     static void Main()
     {
-        TcpChannel channel = new TcpChannel();
+
+        BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
+        provider.TypeFilterLevel = TypeFilterLevel.Full;
+        IDictionary props = new Hashtable();
+        props["port"] = 6081;
+
+        TcpChannel channel = new TcpChannel(props, null, provider);
         ChannelServices.RegisterChannel(channel, false);
+
+        remoteClient rc = new remoteClient();
+        RemotingServices.Marshal(rc, "RemoteClientName", typeof(remoteClient));
 
         MyRemoteMetaDataInterface meta_obj = connectMetaServer(MS1_Address);
         MyRemoteDataInterface data_obj = connectDataServer(DS1_Address);
@@ -88,29 +87,25 @@ class Client : clientInterface
         string filename = "ruicamacho.txt";
         byte[] content = StrToByteArray("Estou a tentar fazer um teste aqui pah!");
 
-        data_obj.freeze();
 
+        data_obj.freeze();
         Console.WriteLine(data_obj.prepareCreate(cliendID, filename));
+        data_obj.freeze();
         Console.WriteLine(data_obj.commitCreate(cliendID, filename));
 
-        Console.WriteLine(data_obj.prepareWrite(cliendID, filename, content));
+        
+        Console.WriteLine(data_obj.prepareWrite(cliendID, filename,content));
+        data_obj.freeze();
         Console.WriteLine(data_obj.commitWrite(cliendID, filename));
 
-        try
-        {
-            data_obj.read(filename, DEFAULT);
-        }
-        catch(Exception e) {
-            Console.WriteLine(e.Message);
-            Console.ReadLine();
-            Console.WriteLine(data_obj.unfreeze());
-        }
-        
-        Console.ReadLine();
+        data_obj.freeze();
+        Console.WriteLine(System.Text.Encoding.Default.GetString(data_obj.read(@"C:\"+filename, DEFAULT)));
 
         Console.WriteLine(data_obj.prepareDelete(cliendID, filename));
+        data_obj.freeze();
         Console.WriteLine(data_obj.commitDelete(cliendID, filename));
 
+        Console.WriteLine("[CLIENT  Main]: Enter para sair do cliente!");
         Console.ReadLine();
     }
 }
