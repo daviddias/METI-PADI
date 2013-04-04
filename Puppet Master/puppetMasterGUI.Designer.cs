@@ -35,7 +35,7 @@
             this.currentStep = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
-            this.textBox4 = new System.Windows.Forms.TextBox();
+            this.outputBox = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
@@ -101,13 +101,13 @@
             this.label2.TabIndex = 6;
             this.label2.Text = "Current Step";
             // 
-            // textBox4
+            // outputBox
             // 
-            this.textBox4.Location = new System.Drawing.Point(543, 51);
-            this.textBox4.Multiline = true;
-            this.textBox4.Name = "textBox4";
-            this.textBox4.Size = new System.Drawing.Size(410, 248);
-            this.textBox4.TabIndex = 8;
+            this.outputBox.Location = new System.Drawing.Point(543, 51);
+            this.outputBox.Multiline = true;
+            this.outputBox.Name = "outputBox";
+            this.outputBox.Size = new System.Drawing.Size(410, 248);
+            this.outputBox.TabIndex = 8;
             // 
             // label3
             // 
@@ -124,7 +124,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1072, 420);
             this.Controls.Add(this.label3);
-            this.Controls.Add(this.textBox4);
+            this.Controls.Add(this.outputBox);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.currentStep);
@@ -148,7 +148,7 @@
         private System.Windows.Forms.TextBox currentStep;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.TextBox textBox4;
+        private System.Windows.Forms.TextBox outputBox;
         private System.Windows.Forms.Label label3;
     }
 }
