@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Puppet-Master", "Puppet Mas
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommonTypes", "CommonTypes\CommonTypes.csproj", "{4EF5E071-57EB-428A-8CDE-D233EE5C89FD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "auxiliar", "ConsoleApplication1\auxiliar.csproj", "{06B18A32-19D1-431C-99F1-4540A6477D4C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,6 +39,10 @@ Global
 		{4EF5E071-57EB-428A-8CDE-D233EE5C89FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4EF5E071-57EB-428A-8CDE-D233EE5C89FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4EF5E071-57EB-428A-8CDE-D233EE5C89FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06B18A32-19D1-431C-99F1-4540A6477D4C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06B18A32-19D1-431C-99F1-4540A6477D4C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06B18A32-19D1-431C-99F1-4540A6477D4C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06B18A32-19D1-431C-99F1-4540A6477D4C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

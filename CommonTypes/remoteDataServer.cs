@@ -3,7 +3,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 
 
 
@@ -122,20 +122,18 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         if (isfailed == true){
             Console.WriteLine("[DATA_SERVER: PrepareWrite]    The server has failed!");
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
             return false;
         }
 
         if (isfrozen == true){
-            List<Object> args = new List<Object>();
-            args.Add(clientID);
-            args.Add(local_file_name);
-            args.Add(byte_array);
-
-            Request request = new Request(PREPAREWRITE, args);
-            pendingRequests.Add(request);
 
             Console.WriteLine("[DATA_SERVER: PrepareWrite]    The server is frozen!");
-            return false;
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
         }
 
         //Verifica a existencia do ficheiro
@@ -162,19 +160,19 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     
         if (isfailed == true){
             Console.WriteLine("[DATA_SERVER: commitWrite]    The server has failed!");
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
             return false;
         }
 
         if (isfrozen == true){
-            List<Object> args = new List<Object>();
-            args.Add(clientID);
-            args.Add(local_file_name);
-
-            Request request = new Request(COMMITWRITE, args);
-            pendingRequests.Add(request);
 
             Console.WriteLine("[DATA_SERVER: commitWrite]    The server is frozen!");
-            return false;
+            
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
         }
 
         MutationListItem item = mutationList.Find(i => i.filename == local_file_name && i.clientID == clientID);
@@ -198,20 +196,19 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         if (isfailed == true)
         {
             Console.WriteLine("[DATA_SERVER: read]    The server has failed!");
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
             return bytes;
         }
 
         if (isfrozen == true)
         {
-            List<Object> args = new List<Object>();
-            args.Add(local_file_name);
-            args.Add(semantic);
-
-            Request request = new Request(READ, args);
-            pendingRequests.Add(request);
-
             Console.WriteLine("[DATA_SERVER: read]    The server is frozen!");
-            throw new Exception("[DATA_SERVER: read]    The server is frozen!");
+
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
         }
 
         FileStream fs;
@@ -229,20 +226,19 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         if (isfailed == true)
         {
             Console.WriteLine("[DATA_SERVER: PrepareCreate]    The server has failed!");
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
             return false;
         }
 
         if (isfrozen == true)
         {
-            List<Object> args = new List<Object>();
-            args.Add(clientID);
-            args.Add(local_file_name);
-
-            Request request = new Request(PREPARECREATE, args);
-            pendingRequests.Add(request);
-
             Console.WriteLine("[DATA_SERVER: PrepareCreate]    The server is frozen!");
-            return false;
+
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
         }
 
         //Verifica a existencia do ficheiro
@@ -270,19 +266,19 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         if (isfailed == true){
             Console.WriteLine("[DATA_SERVER: commitCreate]    The server has failed!");
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
             return false;
         }
 
         if (isfrozen == true){
-            List<Object> args = new List<Object>();
-            args.Add(clientID);
-            args.Add(local_file_name);
-
-            Request request = new Request(COMMITCREATE, args);
-            pendingRequests.Add(request);
 
             Console.WriteLine("[DATA_SERVER: commitCreate]    The server is frozen!");
-            return false;
+
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
         }
 
         MutationListItem item = mutationList.Find(i => i.filename == local_file_name && i.clientID == clientID);
@@ -303,20 +299,20 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         if (isfailed == true)
         {
             Console.WriteLine("[DATA_SERVER: prepareDelete]    The server has failed!");
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
             return false;
         }
 
         if (isfrozen == true)
         {
-            List<Object> args = new List<Object>();
-            args.Add(clientID);
-            args.Add(local_file_name);
-
-            Request request = new Request(PREPAREDELETE, args);
-            pendingRequests.Add(request);
 
             Console.WriteLine("[DATA_SERVER: prepareDelete]    The server is frozen!");
-            return false;
+
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
         }
 
         //Verifica a existencia do ficheiro
@@ -345,20 +341,20 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         if (isfailed == true)
         {
             Console.WriteLine("[DATA_SERVER: commitDelete]    The server has failed!");
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
             return false;
         }
 
         if (isfrozen == true)
         {
-            List<Object> args = new List<Object>();
-            args.Add(clientID);
-            args.Add(local_file_name);
-
-            Request request = new Request(COMMITDELETE, args);
-            pendingRequests.Add(request);
 
             Console.WriteLine("[DATA_SERVER: commitDelete]    The server is frozen!");
-            return false;
+
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
         }
 
         MutationListItem item = mutationList.Find(i => i.filename == local_file_name && i.clientID == clientID);
@@ -396,88 +392,29 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
     public Boolean unfreeze() {
 
-        Boolean success = true;
-
-        if (isfrozen == false)
-        {
+        if (isfrozen == false){
             Console.WriteLine("[DATA_SERVER: unfreeze]    The server was not frozen!");
             return false;
         }
 
         isfrozen = false;
-        Object[] arguments;
+        if (!Monitor.IsEntered(this.mutationList))
+            Monitor.Enter(this.mutationList);
 
-        foreach (Request request in pendingRequests)
-        {
-            arguments = new Object[] {null, null, null};
-
-            int i = 0;
-            foreach (Object arg in request.arguments){
-                arguments[i] = arg;
-                i++;
-            }
-
-            switch (request.function)
-            {
-                case PREPARECREATE:
-                    if (!prepareCreate((string)arguments[0], (string)arguments[1]))
-                        success = false;
-                    break;
-                case PREPAREWRITE:
-                    if (!prepareWrite((string)request.arguments[0], (string)request.arguments[1], (byte[])request.arguments[2]))
-                        success = false;
-                    break;
-                case PREPAREDELETE:
-                    if (!prepareDelete((string)arguments[0], (string)arguments[1]))
-                        success = false;
-                    break;
-                case COMMITCREATE:
-                    if (!commitCreate((string)arguments[0], (string)arguments[1]))
-                        success = false;
-                    break;
-                case COMMITWRITE:
-                    if (!commitWrite((string)arguments[0], (string)arguments[1]))
-                        success = false;
-                    break;
-                case COMMITDELETE:
-                    if (!commitDelete((string)arguments[0], (string)arguments[1]))
-                        success = false;
-                    break;
-                case READ:
-                    if(read((string)arguments[0], (int)arguments[1]) == null)
-                        success = false;
-                    break;
-                case TRANSFERFILE:
-                    if (!transferFile((string)arguments[0], (string)arguments[1]))
-                        success = false;
-                    break;
-                case RECEIVEFILE:
-                    if (!receiveFile((string)arguments[0], (byte[])arguments[1]))
-                        success = false;
-                    break;
-                case FAIL:
-                    if (!fail())
-                        success = false;
-                    break;
-                default:
-                    Console.WriteLine("[DATA_SERVER: unfreeze]    Invalid function in pendingRequests list");
-                    break;
-            }
-
-        }
-
-        return success; 
+        Monitor.PulseAll(mutationList);
+        Monitor.Exit(mutationList);
+        Console.WriteLine("[DATA_SERVER: unfreeze]    Sucesso!");
+        return true;
     }
 
     public Boolean fail() {
 
         if (isfrozen == true){
-            List<Object> args = new List<Object>();
-
-            Request request = new Request(FAIL, args);
-            pendingRequests.Add(request);
             Console.WriteLine("[DATA_SERVER: fail]    Cannot fail while server is frozen!");
-            return false;
+
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
         }
 
         isfailed = true;
@@ -485,12 +422,19 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     }
 
     public Boolean recover() {
-        if (isfailed == true)
+        if (isfrozen == false)
         {
-            Console.WriteLine("[DATA_SERVER: recover]    The server was not failed!");
+            Console.WriteLine("[DATA_SERVER: recover]    The server was not frozen!");
             return false;
         }
-        isfailed = false;
-        return true; 
+
+        isfrozen = false;
+        if (!Monitor.IsEntered(this.mutationList))
+            Monitor.Enter(this.mutationList);
+
+        Monitor.PulseAll(mutationList);
+        Monitor.Exit(mutationList);
+        Console.WriteLine("[DATA_SERVER: recover]    Sucesso!");
+        return true;
     }
 }
