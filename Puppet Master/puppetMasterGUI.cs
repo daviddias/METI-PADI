@@ -10,6 +10,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Threading;
+using System.Runtime.Remoting;
+using System.Runtime.Remoting.Channels;
+using System.Runtime.Remoting.Channels.Tcp;
 
 namespace Puppet_Master
 {
@@ -240,15 +243,37 @@ namespace Puppet_Master
         /*Communication Testing Method*/
         private void hello(string process)
         {
-
         }
 
 
         /****************************************************************************************
          *                                  Get Remote Objects
          ****************************************************************************************/
+        private MyRemoteMetaDataInterface generateRemoteMetadataServer(string port) { 
+            TcpChannel channel = new TcpChannel();
+            ChannelServices.RegisterChannel(channel, false);
+            
+            MyRemoteMetaDataInterface remoteObject = (MyRemoteMetaDataInterface)Activator.GetObject(typeof(MyRemoteMetaDataInterface), "tcp://localhost:" + port + "/MyRemoteMetaDataObjectName");
+            return remoteObject;
+        }
 
+        private MyRemoteDataInterface generateRemoteDataServer(string port)
+        {
+            TcpChannel channel = new TcpChannel();
+            ChannelServices.RegisterChannel(channel, false);
 
+            MyRemoteDataInterface remoteObject = (MyRemoteDataInterface)Activator.GetObject(typeof(MyRemoteDataInterface), "tcp://localhost:" + port + "/MyRemoteDataObjectName");
+            return remoteObject;
+        }
+
+        private remoteClientInterface generateRemoteClient(string port)
+        {
+            TcpChannel channel = new TcpChannel();
+            ChannelServices.RegisterChannel(channel, false);
+
+            remoteClientInterface remoteObject = (remoteClientInterface)Activator.GetObject(typeof(remoteClientInterface), "tcp://localhost:" + port + "/RemoteClientName");
+            return remoteObject;
+        }
 
     }
 }

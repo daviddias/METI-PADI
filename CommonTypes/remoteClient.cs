@@ -10,7 +10,7 @@ using System.Security.Cryptography;
 
 
 
-public interface clientInterface { 
+public interface remoteClientInterface { 
 
     //usado pelo puppet-master
     void open(string filename);                         //TODO
@@ -21,7 +21,7 @@ public interface clientInterface {
 
 
 
-public class remoteClient : MarshalByRefObject, clientInterface
+public class remoteClient : MarshalByRefObject, remoteClientInterface
 {
     FileHandler[] openFiles;
 
