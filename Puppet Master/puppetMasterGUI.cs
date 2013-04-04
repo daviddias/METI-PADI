@@ -23,6 +23,13 @@ namespace Puppet_Master
         int firstClientPort = 8100;
         int firstDataServerPort = 9000;
 
+        int nbDataServers;
+        int nbClients;
+
+        String[] listOfDataServerPorts;
+        String[] listOfMetaServerPorts;
+        String[] listOfClientPorts;
+
         // Dictonary of Running Processes Key=processID (e.g. c-1) Value=Process
         public Dictionary<string, Process> runningProcesses = new Dictionary<string, Process>();
 
@@ -96,6 +103,7 @@ namespace Puppet_Master
                 case "READ": read(parsed[1], Convert.ToInt32(parsed[2]), parsed[3], Convert.ToInt32(parsed[4])); break;
                 case "WRITE": write(parsed[1], Convert.ToInt32(parsed[2]), Convert.ToInt32(parsed[3])); break;
                 case "DUMP": dump(parsed[1]); break;
+                case "HELLO": hello(parsed[1]); break;
             }
         }
 
@@ -128,43 +136,57 @@ namespace Puppet_Master
                 runningProcesses["d-" + i].Start();
             }
 
+            Console.WriteLine("Data-Server Started");
+            System.Threading.Thread.Sleep(3000);
+            
+
             //Meta-Data Servers - Args <MetaDataPortLocal> <MetaDataPortOtherA> <MetaDataPortOtherB> [DataServerPort] [DataServer Port] [DataServer Port]...
             String meta0 = (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 2).ToString();
             runningProcesses.Add("m-" + 0, new Process());
-            runningProcesses["m-" + 0].StartInfo.Arguments = meta0 + listOfDataServerPorts;
+            runningProcesses["m-" + 0].StartInfo.Arguments = meta0 + " " +  listOfDataServerPorts;
             runningProcesses["m-" + 0].StartInfo.FileName = metaServerPath;
             runningProcesses["m-" + 0].Start();
-            
+
+            Console.WriteLine("Meta-Server 0 Started");
+            System.Threading.Thread.Sleep(3000);
+
             String meta1 = (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 2).ToString();
             runningProcesses.Add("m-" + 1, new Process());
-            runningProcesses["m-" + 1].StartInfo.Arguments = meta1 + listOfDataServerPorts;
+            runningProcesses["m-" + 1].StartInfo.Arguments = meta1 + " " + listOfDataServerPorts;
             runningProcesses["m-" + 1].StartInfo.FileName = metaServerPath;
             runningProcesses["m-" + 1].Start();
 
+            Console.WriteLine("Meta-Server 1 Started");
+            System.Threading.Thread.Sleep(3000);
+
             String meta2 = (firstMetaServerPort + 2).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString();
             runningProcesses.Add("m-" + 2, new Process());
-            runningProcesses["m-" + 2].StartInfo.Arguments = meta2 + listOfDataServerPorts;
+            runningProcesses["m-" + 2].StartInfo.Arguments = meta2 + " " + listOfDataServerPorts;
             runningProcesses["m-" + 2].StartInfo.FileName = metaServerPath;
             runningProcesses["m-" + 2].Start();
-            
+
+            Console.WriteLine("Meta-Server 2 Started");
+            System.Threading.Thread.Sleep(3000);
+
+
             listOfMetaServerPorts = meta0; //Meta0 Contem a ordem certa de Meta-Servers que corresponde as responsabilidades para serem entregues aos clientes
 
-            //Clients - Args <clientPort> <meta0Port> <meta1Port> <meta2Port> 
+            //Clients - Args <clientPort> <clientID> <meta0Port> <meta1Port> <meta2Port> 
             for (int k = 0; k < nbClients; k++)
             {
                 runningProcesses.Add("c-" + k, new Process());
-                runningProcesses["c-" + k].StartInfo.Arguments = (firstClientPort + k).ToString() + listOfMetaServerPorts;
+                runningProcesses["c-" + k].StartInfo.Arguments = (firstClientPort + k).ToString() + " " +  ("c-" + k + " ") + listOfMetaServerPorts;
                 listOfClientPorts += (firstClientPort + k).ToString() + " ";
                 runningProcesses["c-" + k].StartInfo.FileName = clientPath;
                 runningProcesses["c-" + k].Start();
             }
 
-            //Now let's get all Remote References =) 
-
+            this.nbClients = nbClients;
+            this.nbDataServers = nbDataServers;
             
-
-
-
+            this.listOfDataServerPorts = listOfDataServerPorts.Split(' ');
+            this.listOfMetaServerPorts = listOfMetaServerPorts.Split(' ');
+            this.listOfClientPorts = listOfClientPorts.Split(' ');
         }
 
         private void fail(string process)
@@ -214,6 +236,18 @@ namespace Puppet_Master
         private void dump(string process)
         {
         }
+
+        /*Communication Testing Method*/
+        private void hello(string process)
+        {
+
+        }
+
+
+        /****************************************************************************************
+         *                                  Get Remote Objects
+         ****************************************************************************************/
+
 
 
     }

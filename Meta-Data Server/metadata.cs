@@ -9,11 +9,15 @@ using System.Runtime.Serialization.Formatters;
 class MetaDataServer{
     static void Main(string[] args){
         //Meta-Data Servers - Args <MetaDataPortLocal> <MetaDataPortOtherA> <MetaDataPortOtherB> [DataServerPort] [DataServer Port] [DataServer Port]...
+        Console.WriteLine("How many args: " + args.Length);
+        Console.WriteLine("What are the args: " + args);
         string thisMetaServerPort = args[0];
         string aMetaServerPort = args[1];
         string bMetaServerPort = args[2];
+        
+
         string[] dataServersPorts = new string[args.Length-3];
-        for (int i = 0; i < args.Length; i++)
+        for (int i = 0; i < (args.Length-3) ; i++)
         {
             dataServersPorts[i] = args[i + 3];
         }

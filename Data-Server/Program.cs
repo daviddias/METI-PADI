@@ -10,10 +10,12 @@ class DataServer
 {
     static void Main(string[] args)
     {
+
+        string dataServerPort = args[0];
         BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
         provider.TypeFilterLevel = TypeFilterLevel.Full;
         IDictionary props = new Hashtable();
-        props["port"] = 7081;
+        props["port"] = dataServerPort;
         TcpChannel channel = new TcpChannel(props, null, provider);
 
         ChannelServices.RegisterChannel(channel, false);

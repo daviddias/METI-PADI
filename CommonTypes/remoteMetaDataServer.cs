@@ -67,6 +67,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             && Convert.ToInt32(localPort) > Convert.ToInt32(bMetaServerPort))
         {whoAmI = 4;}
         else {whoAmI = 2;}
+
+        Console.WriteLine("Meta Server " + whoAmI + "is up!");
     }
 
 
