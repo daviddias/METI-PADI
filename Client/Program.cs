@@ -21,7 +21,7 @@ class Client
         BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
         provider.TypeFilterLevel = TypeFilterLevel.Full;
         IDictionary props = new Hashtable();
-        props["port"] = 6081;
+        props["port"] = clientPort;
 
         TcpChannel channel = new TcpChannel(props, null, provider);
         ChannelServices.RegisterChannel(channel, false);

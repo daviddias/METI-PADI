@@ -225,7 +225,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         if (isfailed == true)
         {
-            Console.WriteLine("[DATA_SERVER: PrepareCreate]    The server has failed!");
+            Console.WriteLine("[DATA_SERVER: PrepareCreate]    The server has is on 'fail'!");
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);

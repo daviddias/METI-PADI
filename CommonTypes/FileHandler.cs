@@ -9,13 +9,13 @@ using System.Runtime.Serialization.Formatters.Binary;
 public class FileHandler
 {
     /* Atributes */
-    String fileName;
-    long fileSize;
-    int nbServers;
-    String[] dataServersURL;
-    int readQuorum;
-    int writeQuorum;
-    long nFileAccess;
+    public String fileName;
+    public long fileSize;
+    public int nbServers;
+    public String[] dataServersPorts;
+    public int readQuorum;
+    public int writeQuorum;
+    public long nFileAccess;
 
     /* Who has opened this File */
     bool isOpen;
@@ -27,12 +27,12 @@ public class FileHandler
 
     /* Constructor */
     public FileHandler(String fileName, long fileSize, int nbServers,
-        String[] dataServersURL, int readQuorum, int writeQuorum, long nFileAccess)
+        String[] dataServersPorts, int readQuorum, int writeQuorum, long nFileAccess)
     {
         this.fileName = fileName;
         this.fileSize = fileSize;
         this.nbServers = nbServers;
-        this.dataServersURL = dataServersURL;
+        this.dataServersPorts = dataServersPorts;
         this.readQuorum = readQuorum;
         this.writeQuorum = writeQuorum;
         this.nFileAccess = nFileAccess;

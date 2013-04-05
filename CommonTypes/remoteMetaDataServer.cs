@@ -12,10 +12,10 @@ public interface MyRemoteMetaDataInterface{
     string MetodoOla();
 
     //usados pelos client
-    FileHandler open(string clientID, string Filename);
+    FileHandler open(string clientID, string filename);
     void close(string ClientID, FileHandler filehandler);
-    FileHandler create(string clientID, string Filename, int NBServers, int Read_Quorun, int Write_Quorun);
-    void confirmCreate(string clientID, FileHandler filehandler, Boolean created);
+    FileHandler create(string clientID, string filename, int nbServers, int readQuorum, int writeQuorum);
+    void confirmCreate(string clientID, string filename, Boolean created);
     FileHandler delete(string clientID, FileHandler filehandler);
     void confirmDelete(string clientID, FileHandler filehandler, Boolean deleted);
     FileHandler write(string clientID, FileHandler filehandler);
@@ -38,14 +38,14 @@ public interface MyRemoteMetaDataInterface{
 public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterface{
 
     /* Atributes */
-    string localPort;
-    string aMetaServerPort;
-    string bMetaServerPort;
-    int whoAmI; //0, 2 ou 4 to identify which Meta-Server it is 
-    string[] dataServersPorts;
+    static string localPort;
+    static string aMetaServerPort;
+    static string bMetaServerPort;
+    static int whoAmI; //0, 2 ou 4 to identify which Meta-Server it is 
+    static string[] dataServersPorts;
 
     //Array of fileTables containing file Handles
-    public Dictionary<string, FileHandler>[] fileTables = new Dictionary<string, FileHandler>[6];
+    public static Dictionary<string, FileHandler>[] fileTables = new Dictionary<string, FileHandler>[6];
     
     /* Constructors */
 
@@ -53,19 +53,19 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         System.Console.WriteLine("Meta-Data Server is up!");
     }
 
-    public MyRemoteMetaDataObject(string localPort, string aMetaServerPort, 
-        string bMetaServerPort, string[] dataServersPorts){
+    public MyRemoteMetaDataObject(string _localPort, string _aMetaServerPort, 
+        string _bMetaServerPort, string[] _dataServersPorts){
         
-        this.localPort = localPort;
-        this.aMetaServerPort = aMetaServerPort;
-        this.bMetaServerPort = bMetaServerPort;
-        this.dataServersPorts = dataServersPorts;
+        localPort = _localPort;
+        aMetaServerPort = _aMetaServerPort;
+        bMetaServerPort = _bMetaServerPort;
+        dataServersPorts = _dataServersPorts;
         if (Convert.ToInt32(localPort) < Convert.ToInt32(aMetaServerPort) 
             && Convert.ToInt32(localPort) < Convert.ToInt32(bMetaServerPort))
         {whoAmI = 0;}
         else if (Convert.ToInt32(localPort) > Convert.ToInt32(aMetaServerPort)
             && Convert.ToInt32(localPort) > Convert.ToInt32(bMetaServerPort))
-        {whoAmI = 4;}
+        {whoAmI = 1;}
         else {whoAmI = 2;}
 
         Console.WriteLine("Meta Server " + whoAmI + "is up!");
@@ -81,18 +81,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         return "[META_SERVER]   Ola eu sou o MetaData Server!";
     }
 
-    //TODO int whoIsResponsible(string filename); Retorna um int
-    //    que representa o número do responsável (para sabermos qual tabela actualizar)
-    
-
-
-
-    /************************************************************************
-     *              Get Remote Object Reference Methods
-     ************************************************************************/
-
-    //TODO to other meta-data server
-    //TODO to other data-server
 
 
     /************************************************************************
@@ -122,23 +110,51 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
     }
 
-    public FileHandler create(string clientID, string Filename, int NBServers, int Read_Quorun, int Write_Quorun)
+    public FileHandler create(string clientID, string filename, int nbServers, int readQuorum, int writeQuorum)
     {
-        /* 1. Is MetaServer Able to Respond (Fail)
-         * 2. Does the file already exists?
-         * 3. Create File-Handler and lock accross Meta-Data Serverss
-         * 4. Return File-Handler
-         */
-        return null;
-        //FileHandler fh = new FileHandler();
-        //return fh;
+        Console.WriteLine("Entered Meta-Server for Create");
+        //1. Is MetaServer Able to Respond (Fail)
+        //TODO
+
+        //2. Does the file already exists?
+        Console.WriteLine("Check if the File already exists");
+//        if (fileTables[Utils.whichMetaServer(filename)].ContainsKey(filename))
+//        { 
+//            Console.WriteLine("The File already exists!");
+//            return null; //TODO return exception here! 
+//        }
+        Console.WriteLine("The File didn't exist yet");
+
+        //3. Decide where the fill will be hosted
+        //TODO - Use info from Load Balacing to decide
+        //Using all of them, by this I mean the only one
+
+        //4. Create File-Handler 
+        Console.WriteLine("Creating new File Handle");
+        FileHandler fh = new FileHandler(filename, 0, nbServers, dataServersPorts, readQuorum, writeQuorum, 1);
+        Console.WriteLine("Created new File Handle");
+        
+        //5. Save the File-Handler
+
+        //6. Lock File accross Meta-Data Servers
+        //TODO
+
+        //7. Return File-Handler
+        Console.WriteLine("Returning File Handle");
+        return fh;
+       
     }
 
-    public void confirmCreate(string clientID, FileHandler filehandler, Boolean created) 
+    public void confirmCreate(string clientID, string filename, Boolean created) 
     {
-        /* 1. Is MetaServer Able to Respond (Fail)
-         * 2. Unlock the File
-         */ 
+        //1. Is MetaServer Able to Respond (Fail)
+        //TODO
+
+        //2. Unlock the File
+        //TODO  
+
+
+
     }
 
     public FileHandler delete(string clientID, FileHandler filehandler)

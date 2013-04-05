@@ -36,8 +36,8 @@ namespace Puppet_Master
         // Dictonary of Running Processes Key=processID (e.g. c-1) Value=Process
         public Dictionary<string, Process> runningProcesses = new Dictionary<string, Process>();
 
-
-
+        TcpChannel channel;
+        
 
         /****************************************************************************************
         *                                  GUI functions
@@ -47,6 +47,9 @@ namespace Puppet_Master
         public puppetMasterGUI()
         {
             InitializeComponent();
+            /* Initialize TCP Channel */
+            channel = new TcpChannel();
+            ChannelServices.RegisterChannel(channel, false);
         }
 
         /**
@@ -137,10 +140,11 @@ namespace Puppet_Master
                 listOfDataServerPorts += (firstDataServerPort + i).ToString() + " ";
                 runningProcesses["d-" + i].StartInfo.FileName = dataServerPath;
                 runningProcesses["d-" + i].Start();
+                Console.WriteLine("Data-Server Started");
+                System.Threading.Thread.Sleep(1000);
             }
 
-            Console.WriteLine("Data-Server Started");
-            System.Threading.Thread.Sleep(3000);
+           
             
 
             //Meta-Data Servers - Args <MetaDataPortLocal> <MetaDataPortOtherA> <MetaDataPortOtherB> [DataServerPort] [DataServer Port] [DataServer Port]...
@@ -151,7 +155,7 @@ namespace Puppet_Master
             runningProcesses["m-" + 0].Start();
 
             Console.WriteLine("Meta-Server 0 Started");
-            System.Threading.Thread.Sleep(3000);
+            System.Threading.Thread.Sleep(1000);
 
             String meta1 = (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 2).ToString();
             runningProcesses.Add("m-" + 1, new Process());
@@ -160,7 +164,7 @@ namespace Puppet_Master
             runningProcesses["m-" + 1].Start();
 
             Console.WriteLine("Meta-Server 1 Started");
-            System.Threading.Thread.Sleep(3000);
+            System.Threading.Thread.Sleep(1000);
 
             String meta2 = (firstMetaServerPort + 2).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString();
             runningProcesses.Add("m-" + 2, new Process());
@@ -169,7 +173,7 @@ namespace Puppet_Master
             runningProcesses["m-" + 2].Start();
 
             Console.WriteLine("Meta-Server 2 Started");
-            System.Threading.Thread.Sleep(3000);
+            System.Threading.Thread.Sleep(1000);
 
 
             listOfMetaServerPorts = meta0; //Meta0 Contem a ordem certa de Meta-Servers que corresponde as responsabilidades para serem entregues aos clientes
@@ -192,29 +196,33 @@ namespace Puppet_Master
             this.listOfClientPorts = listOfClientPorts.Split(' ');
         }
 
+
+
         private void fail(string process)
         {
-
+            //TODO
         }
 
         private void recover(string process)
         {
-
+            //TODO
         }
 
         private void freeze(string process)
         {
-
+            //TODO
         }
 
         private void unfreeze(string process)
         {
- 
+            //TODO
         }
 
 
         private void create(string process, string filename, int nbDataServers, int readQuorum, int writeQuorum)
         {
+            remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            rci.create(filename, nbDataServers, readQuorum, writeQuorum);       
 
         }
 
@@ -243,37 +251,26 @@ namespace Puppet_Master
         /*Communication Testing Method*/
         private void hello(string process)
         {
-        }
+            outputBox.Text = process;
 
-
-        /****************************************************************************************
-         *                                  Get Remote Objects
-         ****************************************************************************************/
-        private MyRemoteMetaDataInterface generateRemoteMetadataServer(string port) { 
-            TcpChannel channel = new TcpChannel();
-            ChannelServices.RegisterChannel(channel, false);
+            System.Threading.Thread.Sleep(2000);
             
-            MyRemoteMetaDataInterface remoteObject = (MyRemoteMetaDataInterface)Activator.GetObject(typeof(MyRemoteMetaDataInterface), "tcp://localhost:" + port + "/MyRemoteMetaDataObjectName");
-            return remoteObject;
+            if(process[0] == 'c')
+            {
+                remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+                string result = rci.metodoOla();
+                outputBox.Text = result;
+            }
+            if (process[0] == 'm')
+            {
+            }
+            if (process[0] == 'd')
+            {
+            }
         }
 
-        private MyRemoteDataInterface generateRemoteDataServer(string port)
-        {
-            TcpChannel channel = new TcpChannel();
-            ChannelServices.RegisterChannel(channel, false);
 
-            MyRemoteDataInterface remoteObject = (MyRemoteDataInterface)Activator.GetObject(typeof(MyRemoteDataInterface), "tcp://localhost:" + port + "/MyRemoteDataObjectName");
-            return remoteObject;
-        }
-
-        private remoteClientInterface generateRemoteClient(string port)
-        {
-            TcpChannel channel = new TcpChannel();
-            ChannelServices.RegisterChannel(channel, false);
-
-            remoteClientInterface remoteObject = (remoteClientInterface)Activator.GetObject(typeof(remoteClientInterface), "tcp://localhost:" + port + "/RemoteClientName");
-            return remoteObject;
-        }
+        
 
     }
 }
