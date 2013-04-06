@@ -46,7 +46,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     static string[] dataServersPorts;
     static Boolean isFail;
 
-    //Array of fileTables containing file Handles
+    //Array of fileTables containing file Handlers
     public static Dictionary<string, FileHandler>[] fileTables = new Dictionary<string, FileHandler>[6];
     
     /* Constructors */
@@ -141,14 +141,41 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         return fh;
     }
 
-    public void close(string ClientID, FileHandler filehandler) {
+    public void close(string ClientID, FileHandler filehandler){
         /* 1. Is MetaServer Able to Respond  (Fail)
          * 2. Has this client a lock in this file? (If yes, denied close)
          * 3. Updates the respective File-Handle by removing this user from the byWhom list
          * 4. Tells other meta-data
          */
 
+        //String Filename = filehandler.fileName;
 
+        //1. Is MetaServer Able to Respond (Fail)
+        if (isFail)
+        {
+            Console.WriteLine("[METASERVER: close]    The server has is on 'fail'!");
+            Monitor.Enter(fileTables);
+            Monitor.Wait(fileTables);
+            Monitor.Exit(fileTables);
+            return;
+        }
+
+
+        //2. Has this client a lock in this file? (If yes, denied close)
+        if (filehandler.isLocked)
+        {
+            Console.WriteLine("[METASERVER: close]    The File is locked!");
+            return;
+        }
+
+
+        //3. Updates the respective File-Handle by removing this user from the byWhom list
+        filehandler.byWhom.Remove(ClientID);
+
+        //4. Tells the other MetaServers to update
+        //TODO
+
+        Console.WriteLine("[METASERVER: close]    Success)!");
     }
 
     public FileHandler create(string clientID, string filename, int nbServers, int readQuorum, int writeQuorum)

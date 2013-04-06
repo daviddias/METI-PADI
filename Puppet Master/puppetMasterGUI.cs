@@ -223,7 +223,6 @@ namespace Puppet_Master
         {
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
             rci.create(filename, nbDataServers, readQuorum, writeQuorum);       
-
         }
 
         private void open(string process,string filename)
@@ -234,7 +233,8 @@ namespace Puppet_Master
 
         private void close(string process, string filename)
         {
-
+            remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            rci.close(filename); 
         }
 
         private void read(string process, int fileRegister, string semantics, int byteArrayRegister)

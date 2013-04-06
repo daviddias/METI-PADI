@@ -13,13 +13,15 @@ using System.Runtime.Remoting.Channels.Tcp;
 public interface remoteClientInterface { 
 
     //usado pelo puppet-master
-    void open(string filename);                         //TODO
+    void open(string filename);
+    void close(string filename);                        //TODO
     void create(string filename, int nbDataServers, int readQuorum, int writeQuorum);                      
     void delete(string filename);                       //TODO
     void write(string filename, byte[] byte_array);     //TODO
 
     //testing communication
     string metodoOla();
+
 }
 
 
@@ -104,6 +106,29 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         openFiles.Add(filename, filehandler);
         Console.WriteLine("[CLIENT  open]:  Success!");
+        return;
+    }
+
+    public void close(string filename)
+    {
+
+        //1. Check if file is really open
+        if (!openFiles.ContainsKey(filename))
+        {
+            Console.WriteLine("[CLIENT  close]:  The file you want close isn't open!");
+            return;
+        }
+
+        //3. Contact MetaServers to close
+        MyRemoteMetaDataInterface meta_obj = null;
+        int whichMetaServer = Utils.whichMetaServer(filename);
+        meta_obj = Utils.getRemoteMetaDataObj(metaServerPort[whichMetaServer]);
+        FileHandler filehandler = meta_obj.open(clientID, filename);
+        meta_obj.close(clientID, filehandler);
+
+        //4. Remove from Open Files 
+        openFiles.Remove(filename);
+        Console.WriteLine("[CLIENT  close]:  Success!");
         return;
     }
 
