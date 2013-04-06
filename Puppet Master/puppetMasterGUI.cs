@@ -107,7 +107,7 @@ namespace Puppet_Master
                 case "OPEN": open(parsed[1], parsed[2]); break;
                 case "CLOSE": close(parsed[1], parsed[2]); break;
                 case "READ": read(parsed[1], Convert.ToInt32(parsed[2]), parsed[3], Convert.ToInt32(parsed[4])); break;
-                case "WRITE": write(parsed[1], Convert.ToInt32(parsed[2]), Convert.ToInt32(parsed[3])); break;
+                case "WRITE": write(parsed[1], parsed[2], parsed[3]); break;
                 case "DUMP": dump(parsed[1]); break;
                 case "HELLO": hello(parsed[1]); break;
             }
@@ -228,7 +228,8 @@ namespace Puppet_Master
 
         private void open(string process,string filename)
         {
-
+            remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            rci.open(filename); 
         }
 
         private void close(string process, string filename)
@@ -240,8 +241,11 @@ namespace Puppet_Master
         {
         }
 
-        private void write(string process, int fileRegister, int byteArrayRegister)
+        private void write(string process, string filename, string content)
         {
+            remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            Byte[] bytes = System.Text.Encoding.UTF8.GetBytes(content);
+            rci.write(filename,bytes); 
         }
 
         private void dump(string process)

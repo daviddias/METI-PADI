@@ -18,11 +18,11 @@ public class FileHandler
     public long nFileAccess;
 
     /* Who has opened this File */
-    bool isOpen;
-    List<string> byWhom = new List<string>();
+    public bool isOpen;
+    public List<string> byWhom = new List<string>();
 
     /* Mutual exclusion */
-    bool isLocked = false;
+    public bool isLocked = false;
     string byWho;
 
     /* Constructor */
@@ -39,6 +39,7 @@ public class FileHandler
         isOpen = true;
     }
 
+ 
     /* Serializable stuff */
 
 

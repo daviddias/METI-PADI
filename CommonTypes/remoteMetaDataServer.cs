@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 
 
 
@@ -43,6 +44,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     static string bMetaServerPort;
     static int whoAmI; //0, 2 ou 4 to identify which Meta-Server it is 
     static string[] dataServersPorts;
+    static Boolean isFail;
 
     //Array of fileTables containing file Handles
     public static Dictionary<string, FileHandler>[] fileTables = new Dictionary<string, FileHandler>[6];
@@ -50,23 +52,32 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     /* Constructors */
 
     public MyRemoteMetaDataObject(){
+        isFail = false;
+
+        for (int i = 0; i < 6; i++)
+            fileTables[i] = new Dictionary<string, FileHandler>();
+
         System.Console.WriteLine("Meta-Data Server is up!");
     }
 
-    public MyRemoteMetaDataObject(string _localPort, string _aMetaServerPort, 
-        string _bMetaServerPort, string[] _dataServersPorts){
-        
+    public MyRemoteMetaDataObject(string _localPort, string _aMetaServerPort, string _bMetaServerPort, string[] _dataServersPorts){
+
+        isFail = false;
         localPort = _localPort;
         aMetaServerPort = _aMetaServerPort;
         bMetaServerPort = _bMetaServerPort;
         dataServersPorts = _dataServersPorts;
-        if (Convert.ToInt32(localPort) < Convert.ToInt32(aMetaServerPort) 
-            && Convert.ToInt32(localPort) < Convert.ToInt32(bMetaServerPort))
-        {whoAmI = 0;}
-        else if (Convert.ToInt32(localPort) > Convert.ToInt32(aMetaServerPort)
-            && Convert.ToInt32(localPort) > Convert.ToInt32(bMetaServerPort))
-        {whoAmI = 1;}
-        else {whoAmI = 2;}
+
+        for (int i = 0; i < 6; i++)
+            fileTables[i] = new Dictionary<string, FileHandler>();
+
+            if (Convert.ToInt32(localPort) < Convert.ToInt32(aMetaServerPort)
+                && Convert.ToInt32(localPort) < Convert.ToInt32(bMetaServerPort))
+            { whoAmI = 0; }
+            else if (Convert.ToInt32(localPort) > Convert.ToInt32(aMetaServerPort)
+                && Convert.ToInt32(localPort) > Convert.ToInt32(bMetaServerPort))
+            { whoAmI = 1; }
+            else { whoAmI = 2; }
 
         Console.WriteLine("Meta Server " + whoAmI + "is up!");
     }
@@ -95,9 +106,39 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
          * 5. Returns FileHandler
          */
 
-        return null;
-        //FileHandler fh = new FileHandler();
-        //return fh;
+        FileHandler fh;
+  
+        //1. Is MetaServer Able to Respond (Fail)
+        if (isFail)
+        {
+            Console.WriteLine("[METASERVER: open]    The server has is on 'fail'!");
+            Monitor.Enter(fileTables);
+            Monitor.Wait(fileTables);
+            Monitor.Exit(fileTables);
+            fh = null;
+            return fh;
+        }
+
+
+        //2.Does the file exist?
+        if (!fileTables[Utils.whichMetaServer(Filename)].ContainsKey(Filename))
+        {
+            Console.WriteLine("[METASERVER: open]    The file doesn't exist yet (error)!");
+            return null; //TODO return exception here! 
+        }
+
+        fh = fileTables[Utils.whichMetaServer(Filename)][Filename];
+
+        //3. Add to the File Handle, the clientID who has it opened
+        if (!fh.isOpen)
+            fh.isOpen = true;
+        fh.byWhom.Add(clientID);
+
+        //4. Tells the other MetaServers to update
+        //TODO
+
+        Console.WriteLine("[METASERVER: open]    Success)!");
+        return fh;
     }
 
     public void close(string ClientID, FileHandler filehandler) {
@@ -112,35 +153,42 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
     public FileHandler create(string clientID, string filename, int nbServers, int readQuorum, int writeQuorum)
     {
-        Console.WriteLine("Entered Meta-Server for Create");
+        FileHandler fh;
         //1. Is MetaServer Able to Respond (Fail)
-        //TODO
+        if (isFail)
+        {
+            Console.WriteLine("[METASERVER: create]    The server has is on 'fail'!");
+            Monitor.Enter(fileTables);
+            Monitor.Wait(fileTables);
+            Monitor.Exit(fileTables);
+            fh = null;
+            return fh;
+        }
 
-        //2. Does the file already exists?
-        Console.WriteLine("Check if the File already exists");
-//        if (fileTables[Utils.whichMetaServer(filename)].ContainsKey(filename))
-//        { 
-//            Console.WriteLine("The File already exists!");
-//            return null; //TODO return exception here! 
-//        }
-        Console.WriteLine("The File didn't exist yet");
+        //2. Does the file already exists? 
+        if (fileTables[Utils.whichMetaServer(filename)].ContainsKey(filename))
+        {
+            Console.WriteLine("[METASERVER: create]    File already exists");
+            return null; //TODO return exception here! 
+        }
 
         //3. Decide where the fill will be hosted
         //TODO - Use info from Load Balacing to decide
         //Using all of them, by this I mean the only one
 
         //4. Create File-Handler 
-        Console.WriteLine("Creating new File Handle");
-        FileHandler fh = new FileHandler(filename, 0, nbServers, dataServersPorts, readQuorum, writeQuorum, 1);
-        Console.WriteLine("Created new File Handle");
+        //Console.WriteLine("Creating new File Handle");
+        fh = new FileHandler(filename, 0, nbServers, dataServersPorts, readQuorum, writeQuorum, 1);
+        //Console.WriteLine("Created new File Handle");
         
         //5. Save the File-Handler
+        fileTables[Utils.whichMetaServer(filename)].Add(filename, fh);
 
         //6. Lock File accross Meta-Data Servers
         //TODO
 
         //7. Return File-Handler
-        Console.WriteLine("Returning File Handle");
+        Console.WriteLine("[METASERVER: create]    Success!");
         return fh;
        
     }
@@ -176,15 +224,63 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
     public FileHandler write(string clientID, FileHandler filehandler)
     {
-        return null;
-        //FileHandler fh = new FileHandler();
-        //return fh;
+
+        Boolean flag = false;
+
+        //1. Is MetaServer Able to Respond (Fail)
+        if (isFail)
+        {
+            Console.WriteLine("[METASERVER: write]    The server has is on 'fail'!");
+            Monitor.Enter(fileTables);
+            Monitor.Wait(fileTables);
+            Monitor.Exit(fileTables);
+            return null;
+        }
+
+        //2. Does the file already exists? 
+        if (!fileTables[Utils.whichMetaServer(filehandler.fileName)].ContainsKey(filehandler.fileName))
+        {
+            Console.WriteLine("[METASERVER: write]    The file doesn't exist yet (error)!");
+            return null; //TODO return exception here! 
+        }
+
+        //Console.WriteLine("[METASERVER: write]    File exists!");
+
+        //3. O ficheiro está bloqueado?
+        if (filehandler.isLocked){
+            Console.WriteLine("[METASERVER: write]    The File is locked!");
+            return null;
+        }
+
+        //4. O cliente tem o ficheiro aberto?
+        // Esta verificacao ja é feita no lado do cliente!
+
+        //Console.WriteLine("[METASERVER: write]    Client had opened the file!");
+
+
+        //5.Faz lock ao ficheiro
+        filehandler.isLocked = true;
+
+        //6. Devolve o filehandler ao cliente
+        Console.WriteLine("[METASERVER: write]    Success!");
+        return filehandler;
     }
+        
     public void confirmWrite(string clientID, FileHandler filehander, Boolean wrote) 
     {
-        /*
-         * 
-         */ 
+        //1. Is MetaServer Able to Respond (Fail)
+        if (isFail)
+        {
+            Console.WriteLine("[METASERVER: confirmWrite]    The server has is on 'fail'!");
+            Monitor.Enter(fileTables);
+            Monitor.Wait(fileTables);
+            Monitor.Exit(fileTables);
+            return;
+        }
+
+        //2. Faz unlock ao ficheiro
+        filehander.isLocked = false;
+        Console.WriteLine("[METASERVER: confirmWrite]    Success!");
     }
 
     /************************************************************************

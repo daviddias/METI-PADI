@@ -65,35 +65,18 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     //Semanticas
     public const int DEFAULT = 1;
     public const int MONOTONIC = 2;
-
-    //Mapeamento dos pedidos
-    public const int PREPARECREATE = 1;
-    public const int PREPAREWRITE = 2;
-    public const int PREPAREDELETE = 3;
-    public const int COMMITCREATE = 4;
-    public const int COMMITWRITE = 5;
-    public const int COMMITDELETE = 6;
-    public const int READ = 7;
-    public const int TRANSFERFILE = 8;
-    public const int RECEIVEFILE = 9;
-    public const int FAIL = 10;
     
     //Estados do servidor
-    public Boolean isfailed = false;
-    public Boolean isfrozen = false;
+    public static Boolean isfailed = false;
+    public static Boolean isfrozen = false;
 
     //Lista de Ficheiros Mutantes
-    public List<MutationListItem> mutationList;
-
-    //Lista de pedidos pendentes
-    List<Request> pendingRequests;
+    public static List<MutationListItem> mutationList;
 
     //Construtor
     public MyRemoteDataObject()
     {
         mutationList = new List<MutationListItem>();
-        pendingRequests = new List<Request>();
-
         System.Console.WriteLine("Data Server is up!");
     }
 
@@ -398,8 +381,8 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         }
 
         isfrozen = false;
-        if (!Monitor.IsEntered(this.mutationList))
-            Monitor.Enter(this.mutationList);
+        if (!Monitor.IsEntered(mutationList))
+            Monitor.Enter(mutationList);
 
         Monitor.PulseAll(mutationList);
         Monitor.Exit(mutationList);
@@ -429,8 +412,8 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         }
 
         isfrozen = false;
-        if (!Monitor.IsEntered(this.mutationList))
-            Monitor.Enter(this.mutationList);
+        if (!Monitor.IsEntered(mutationList))
+            Monitor.Enter(mutationList);
 
         Monitor.PulseAll(mutationList);
         Monitor.Exit(mutationList);

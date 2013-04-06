@@ -26,8 +26,9 @@ public interface remoteClientInterface {
 
 public class remoteClient : MarshalByRefObject, remoteClientInterface
 {
-    
-    FileHandler[] openFiles;
+
+    public static Dictionary<string, FileHandler> openFiles = new Dictionary<string, FileHandler>();
+    public const int MAX_FILES_OPENED = 10;
 
     public string[] metaServerPort = new string[6];
     public string MS0_Address;
@@ -42,11 +43,10 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
     //Atributos
     public string clientID;
-    
+
     //Construtor
     public remoteClient(string ID, string[] metaServerPorts)
     {
-        openFiles = new FileHandler[10];
         clientID = ID;
         this.metaServerPort[0] = metaServerPorts[0];
         this.metaServerPort[1] = metaServerPorts[0];
@@ -55,7 +55,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         this.metaServerPort[4] = metaServerPorts[2];
         this.metaServerPort[5] = metaServerPorts[2];
 
-        System.Console.WriteLine("Client: - " + clientID  +" -  is up!");
+        System.Console.WriteLine("Client: - " + clientID + " -  is up!");
     }
 
     public override object InitializeLifetimeService()
@@ -74,62 +74,135 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     /************************************************************************
      *              Invoked Methods by Pupper Master
      ************************************************************************/
-    public void open(string filename) {
+    public void open(string filename)
+    {
 
+        FileHandler filehandler;
+
+        //1. Check if file is already opened.
+        if (openFiles.ContainsKey(filename)) {
+            Console.WriteLine("[CLIENT  open]:  The file is already opened!");
+            return;
+        }
+
+        //2. Check if there aren't 10 files already opened
+        if (openFiles.Count >= MAX_FILES_OPENED) {
+            Console.WriteLine("[CLIENT  open]:  Can't have 10 opened files at once!");
+            return;
+        }
+
+        //3. Contact MetaServers to open
         MyRemoteMetaDataInterface meta_obj = null;
         int whichMetaServer = Utils.whichMetaServer(filename);
         meta_obj = Utils.getRemoteMetaDataObj(metaServerPort[whichMetaServer]);
-        meta_obj.open(clientID, filename);
+        filehandler = meta_obj.open(clientID, filename);
 
-        return; 
+        if (filehandler == null){
+            Console.WriteLine("[CLIENT  open]:  MetaServer didn't opened the file!");
+            return;
+        }
+
+        openFiles.Add(filename, filehandler);
+        Console.WriteLine("[CLIENT  open]:  Success!");
+        return;
     }
-    public void create(string filename, int nbDataServers, int readQuorum, int writeQuorum) 
-    { 
+
+    public void create(string filename, int nbDataServers, int readQuorum, int writeQuorum)
+    {
         //1. Find out which Meta-Server to Call
-        Console.WriteLine("Discovering the right MetaData Server");
+        //Console.WriteLine("Discovering the right MetaData Server");
         MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
-        Console.WriteLine("Meta-Data Server: " + Utils.whichMetaServer(filename));
-        
+        //Console.WriteLine("Meta-Data Server: " + Utils.whichMetaServer(filename));
+
 
         //2. If not available, try next one
         //TODO
 
         //3. Get File-Handle
-        Console.WriteLine("Request the File Handle");
+        //Console.WriteLine("Request the File Handle");
         FileHandler fh = mdi.create(this.clientID, filename, nbDataServers, readQuorum, writeQuorum);
-        Console.WriteLine("File Handle Request sucess");
+        //Console.WriteLine("File Handle Request sucess");
 
         //4. Save File-Handle
         //TODO - Implement a function to do this (also one to remove)
 
 
         //5. Contact Data-Servers to Prepare
-        Console.WriteLine("Launching Prepare to Commit");
-        foreach(string dataServerPort in fh.dataServersPorts){
-           MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
+        //Console.WriteLine("Launching Prepare to Commit");
+        foreach (string dataServerPort in fh.dataServersPorts)
+        {
+            MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
             di.prepareCreate(this.clientID, filename);
         }
-        Console.WriteLine("Launched Prepare to Commit");
+        //Console.WriteLine("Launched Prepare to Commit");
 
         //6. Contact Data-Servers to Commit
-        foreach(string dataServerPort in fh.dataServersPorts){
-           MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
+        foreach (string dataServerPort in fh.dataServersPorts)
+        {
+            MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
             di.commitCreate(this.clientID, filename);
         }
 
-        
+
         //7. Tell Meta-Data Server to Confirm Creation 
         mdi.confirmCreate(this.clientID, filename, true);
-        
-        return; 
-    } 
 
-    public void delete(string filename) 
-    { 
-        return; 
+        Console.WriteLine("[CLIENT  create] Success!");
+        return;
     }
-    public void write(string filename, byte[] byte_array) 
+
+    public void delete(string filename)
     {
+        return;
+    }
+    
+    public void write(string filename, byte[] byte_array)
+    {
+
+        FileHandler fh = null;
+
+        //1.Find if this client has this file opened
+        if (!openFiles.ContainsKey(filename))
+        {
+            Console.WriteLine("[CLIENT  write]:  File is not yet opened!");
+            return;
+        }
+
+        fh = openFiles[filename];
+
+        //2. Find out which Meta-Server to Call
+        MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
+
+
+        //3. If not available, try next one
+        //TODO
+
+        //4. Cotact metaserver for write operation
+        if (mdi.write(this.clientID, fh) == null)
+        {
+            Console.WriteLine("[CLIENT  write]  Metaserve did not gave permission to write!");
+            return;
+        }
+
+        //5. Contact Data-Servers to Prepare
+        foreach (string dataServerPort in fh.dataServersPorts)
+        {
+            MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
+            di.prepareWrite(this.clientID, filename, byte_array);
+        }
+
+        //6. Contact Data-Servers to Commit
+        foreach (string dataServerPort in fh.dataServersPorts)
+        {
+            MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
+            di.commitWrite(this.clientID, filename);
+        }
+
+
+        //7. Tell Meta-Data Server to Confirm Creation 
+        mdi.confirmWrite(this.clientID, fh, true);
+
+        Console.WriteLine("[CLIENT  write]  Success");
         return;
     }
 }
