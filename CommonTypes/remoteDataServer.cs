@@ -200,7 +200,8 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         bytes = new byte[fs.Length];
         fs.Read(bytes, 0, Convert.ToInt32(fs.Length));
         fs.Close();
-       
+
+        Console.WriteLine("[DATA_SERVER: read]    Success!");
         return bytes;
     }
 
@@ -405,19 +406,6 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     }
 
     public Boolean recover() {
-        if (isfrozen == false)
-        {
-            Console.WriteLine("[DATA_SERVER: recover]    The server was not frozen!");
-            return false;
-        }
-
-        isfrozen = false;
-        if (!Monitor.IsEntered(mutationList))
-            Monitor.Enter(mutationList);
-
-        Monitor.PulseAll(mutationList);
-        Monitor.Exit(mutationList);
-        Console.WriteLine("[DATA_SERVER: recover]    Sucesso!");
         return true;
     }
 }

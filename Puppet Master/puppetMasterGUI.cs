@@ -93,8 +93,8 @@ namespace Puppet_Master
             scriptTextBox.Lines = lines;
             currentStep.Text = nextSept;
 
-            char[] p = { ' ', '\t' };
-            string[] parsed = nextSept.Split(p);
+            String[] p = {" ", "\t" ,", "};
+            string[] parsed = nextSept.Split(p, StringSplitOptions.None);
 
             switch (parsed[0])
             {
@@ -106,8 +106,12 @@ namespace Puppet_Master
                 case "CREATE": create(parsed[1], parsed[2], Convert.ToInt32(parsed[3]), Convert.ToInt32(parsed[4]), Convert.ToInt32(parsed[5])); break;
                 case "OPEN": open(parsed[1], parsed[2]); break;
                 case "CLOSE": close(parsed[1], parsed[2]); break;
-                case "READ": read(parsed[1], Convert.ToInt32(parsed[2]), parsed[3], Convert.ToInt32(parsed[4])); break;
-                case "WRITE": write(parsed[1], parsed[2], parsed[3]); break;
+                case "READ": read(parsed[1], parsed[2], parsed[3], Convert.ToInt32(parsed[4])); break;
+                case "WRITE":
+                    for (int i = 4; i < parsed.Length; i++)
+                        parsed[3] += " "+parsed[i];
+                    write(parsed[1], parsed[2], parsed[3]); 
+                    break;
                 case "DUMP": dump(parsed[1]); break;
                 case "HELLO": hello(parsed[1]); break;
             }
@@ -237,8 +241,21 @@ namespace Puppet_Master
             rci.close(filename); 
         }
 
-        private void read(string process, int fileRegister, string semantics, int byteArrayRegister)
+        private void read(string process, string filename, string semantics, int byteArrayRegister)
         {
+            int DEFAULT = 1;
+            int MONOTONIC = 2;
+
+            int semantic;
+
+            switch (semantics) {
+                case "default": semantic = DEFAULT; break;
+                case "monotonic": semantic = MONOTONIC; break;
+                default: semantic = DEFAULT; break;
+            }
+
+            remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            outputBox.Text = System.Text.Encoding.Default.GetString(rci.read(filename, semantic));
         }
 
         private void write(string process, string filename, string content)
