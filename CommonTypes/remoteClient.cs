@@ -19,7 +19,7 @@ public interface remoteClientInterface {
     void delete(string filename);                                                       //todo
     void write(int reg, byte[] byteArray);                                             //todo
     void write(int reg, int byteArray);                                             //todo
-    byte[] read(int reg, int semantics, int byteArray);                                                //DONE
+    void read(int reg, int semantics, int byteArray);                                                //DONE
 
     //testing communication
     string metodoOla();
@@ -31,7 +31,6 @@ public interface remoteClientInterface {
 public class remoteClient : MarshalByRefObject, remoteClientInterface
 {
 
-    public static Dictionary<string, FileHandler> openFiles = new Dictionary<string, FileHandler>();
     public const int MAX_FILES_OPENED = 10;
 
     public string[] metaServerPort = new string[6];
@@ -144,7 +143,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
 
         //1. Check if file is really open
-        if (!openFiles.ContainsKey(filename))
+        if (!isOpen(filename))
         {
             Console.WriteLine("[CLIENT  close]:  The file you want to close isn't open!");
             return;
@@ -157,8 +156,13 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         FileHandler filehandler = meta_obj.open(clientID, filename);
         meta_obj.close(clientID, filehandler);
 
-        //4. Remove from Open Files 
-        openFiles.Remove(filename);
+        //4. Remove from Open Files
+        foreach (FileHandler fh in register)
+            if (fh.fileName == filename)
+            {
+                register.Remove(fh);
+                break;
+            }
         Console.WriteLine("[CLIENT  close]:  Success!");
         return;
     }
@@ -267,20 +271,18 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         write(reg, bytes[byteArray]);
     }
 
-    public byte[] read(int reg, int semantics, int byteArray) {
+    public void read(int reg, int semantics, int byteArray) {
 
         byte[] content;
-
-        FileHandler fh = null;
-
+        
         //1.Find if this client has this file opened
         if (!isOpen(register[reg].fileName))
         {
             Console.WriteLine("[CLIENT  read]:  File is not yet opened!");
-            return null;
+            return;
         }
 
-        fh = register[reg];
+        FileHandler fh = register[reg];
 
         //3. Contact Data-Server to read
         foreach (string dataServerPort in fh.dataServersPorts)
@@ -291,10 +293,10 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             if (content != null)
                 Console.WriteLine("[CLIENT  read]:  Success!");
             bytes.Insert(byteArray, content);
-            return content;
+            return;
         }
 
         Console.WriteLine("[CLIENT  read]:  Success!");
-        return null;
+        return;
     }
 }

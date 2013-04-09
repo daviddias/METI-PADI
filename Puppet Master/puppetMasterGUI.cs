@@ -308,7 +308,7 @@ namespace Puppet_Master
             }
 
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
-            outputBox.Text = System.Text.Encoding.Default.GetString(rci.read(reg, semantic, byteArrayRegister));
+            rci.read(reg, semantic, byteArrayRegister);
         }
 
         private void write(string process, int reg, string content)
