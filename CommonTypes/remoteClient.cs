@@ -17,8 +17,8 @@ public interface remoteClientInterface {
     void close(string filename);                                                        //DONE
     void create(string filename, int nbDataServers, int readQuorum, int writeQuorum);   //DONE                   
     void delete(string filename);                                                       //todo
-    void write(int reg, byte[] byteArray);                                             //DONE
-    void write(int reg, int byteArray);                                             //DONE
+    void write(int reg, byte[] byteArray);                                             //todo
+    void write(int reg, int byteArray);                                             //todo
     byte[] read(int reg, int semantics, int byteArray);                                                //DONE
 
     //testing communication
@@ -110,7 +110,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         FileHandler filehandler;
 
         //1. Check if file is already opened.
-        if (!isOpen(filename))
+        if (isOpen(filename))
         {
             Console.WriteLine("[CLIENT  open]:  The file is already opened!");
             return null;
@@ -212,17 +212,19 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         return;
     }
 
-    public void write(int reg, byte[] byteArray)
+    public void write(int reg, Byte[] byteArray)
     {
 
         FileHandler fh = null;
 
-        //1.Find if this client has this file opened and get the filehandler
-        if ((fh = register[reg]) != null)
+        //1.Find if this client has this file opened
+        if (!isOpen(register[reg].fileName))
         {
             Console.WriteLine("[CLIENT  write]:  File is not yet opened!");
             return;
         }
+
+        fh = register[reg];
 
         //2. Find out which Meta-Server to Call
         MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(fh.fileName)]);
@@ -271,12 +273,14 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         FileHandler fh = null;
 
-        //1.Find if this client has this file opened and get the filehandler
-        if ((fh = register[reg]) != null)
+        //1.Find if this client has this file opened
+        if (!isOpen(register[reg].fileName))
         {
-            Console.WriteLine("[CLIENT  write]:  File is not yet opened!");
+            Console.WriteLine("[CLIENT  read]:  File is not yet opened!");
             return null;
         }
+
+        fh = register[reg];
 
         //3. Contact Data-Server to read
         foreach (string dataServerPort in fh.dataServersPorts)
