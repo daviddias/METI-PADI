@@ -34,9 +34,6 @@ namespace Puppet_Master
         String[] listOfMetaServerPorts;
         String[] listOfClientPorts;
 
-        // Register where the filehandlers are saved in Puppet Master
-        List<FileHandler> register = new List<FileHandler>();
-
         // Dictonary of Running Processes Key=processID (e.g. c-1) Value=Process
         public Dictionary<string, Process> runningProcesses = new Dictionary<string, Process>();
 
@@ -112,9 +109,16 @@ namespace Puppet_Master
                 case "CLOSE": close(parsed[1], parsed[2]); break;
                 case "READ": read(parsed[1],  Convert.ToInt32(parsed[2]), parsed[3], Convert.ToInt32(parsed[4])); break;
                 case "WRITE":
-                    for (int i = 4; i < parsed.Length; i++)
-                        parsed[3] += " "+parsed[i];
-                    write(parsed[1],  Convert.ToInt32(parsed[2]), parsed[3]); 
+                    if (parsed[3].StartsWith("\""))
+                    {
+                        for (int i = 4; i < parsed.Length; i++)
+                            parsed[3] += " " + parsed[i];
+                        write(parsed[1], Convert.ToInt32(parsed[2]), parsed[3]);
+                    }
+                    else
+                    {
+                        write(parsed[1], Convert.ToInt32(parsed[2]), Convert.ToInt32(parsed[3]));
+                    }
                     break;
                 case "DUMP": dump(parsed[1]); break;
                 case "HELLO": hello(parsed[1]); break;
@@ -208,22 +212,67 @@ namespace Puppet_Master
 
         private void fail(string process)
         {
-            //TODO
+            remoteClientInterface rci;
+            MyRemoteMetaDataInterface mdi;
+            MyRemoteDataInterface dsi;
+            // Clients
+            if(process.StartsWith("c-"))
+                rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            // Metadata Servers
+            if(process.StartsWith("m-"))
+                mdi = Utils.getRemoteMetaDataObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            // Data Servers
+            if(process.StartsWith("d-"))
+                dsi = Utils.getRemoteDataServerObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+
         }
 
         private void recover(string process)
         {
-            //TODO
+            remoteClientInterface rci;
+            MyRemoteMetaDataInterface mdi;
+            MyRemoteDataInterface dsi;
+            // Clients
+            if (process.StartsWith("c-"))
+                rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            // Metadata Servers
+            if (process.StartsWith("m-"))
+                mdi = Utils.getRemoteMetaDataObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            // Data Servers
+            if (process.StartsWith("d-"))
+                dsi = Utils.getRemoteDataServerObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
         }
 
         private void freeze(string process)
         {
-            //TODO
+            remoteClientInterface rci;
+            MyRemoteMetaDataInterface mdi;
+            MyRemoteDataInterface dsi;
+            // Clients
+            if (process.StartsWith("c-"))
+                rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            // Metadata Servers
+            if (process.StartsWith("m-"))
+                mdi = Utils.getRemoteMetaDataObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            // Data Servers
+            if (process.StartsWith("d-"))
+                dsi = Utils.getRemoteDataServerObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
         }
 
         private void unfreeze(string process)
         {
-            //TODO
+            remoteClientInterface rci;
+            MyRemoteMetaDataInterface mdi;
+            MyRemoteDataInterface dsi;
+            // Clients
+            if (process.StartsWith("c-"))
+                rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            // Metadata Servers
+            if (process.StartsWith("m-"))
+                mdi = Utils.getRemoteMetaDataObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            // Data Servers
+            if (process.StartsWith("d-"))
+                dsi = Utils.getRemoteDataServerObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
         }
 
 
@@ -236,9 +285,7 @@ namespace Puppet_Master
         private void open(string process,string filename)
         {
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
-            register.Add(rci.open(filename));
-            foreach(FileHandler fh in register)
-                outputBox.Text = "[Puppet  open]:  Registos" + fh.ToString(); 
+            rci.open(filename);
         }
 
         private void close(string process, string filename)
@@ -261,14 +308,20 @@ namespace Puppet_Master
             }
 
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
-            outputBox.Text = System.Text.Encoding.Default.GetString(rci.read(register[reg].fileName, semantic));
+            outputBox.Text = System.Text.Encoding.Default.GetString(rci.read(reg, semantic, byteArrayRegister));
         }
 
         private void write(string process, int reg, string content)
         {
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
             Byte[] bytes = System.Text.Encoding.UTF8.GetBytes(content);
-            rci.write(register[reg].fileName, bytes); 
+            rci.write(reg, bytes); 
+        }
+
+        private void write(string process, int reg, int byteArray)
+        {
+            remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            rci.write(reg, byteArray); 
         }
 
         private void dump(string process)

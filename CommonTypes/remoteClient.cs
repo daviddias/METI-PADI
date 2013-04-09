@@ -13,12 +13,13 @@ using System.Runtime.Remoting.Channels.Tcp;
 public interface remoteClientInterface { 
 
     //usado pelo puppet-master
-    FileHandler open(string filename);                                                         //DONE
+    FileHandler open(string filename);                                                  //DONE
     void close(string filename);                                                        //DONE
     void create(string filename, int nbDataServers, int readQuorum, int writeQuorum);   //DONE                   
-    void delete(string filename);                                                       //TODO
-    void write(string filename, byte[] byte_array);                                     //DONE
-    byte[] read(string filename, int semantics);
+    void delete(string filename);                                                       //todo
+    void write(int reg, byte[] byteArray);                                             //DONE
+    void write(int reg, int byteArray);                                             //DONE
+    byte[] read(int reg, int semantics, int byteArray);                                                //DONE
 
     //testing communication
     string metodoOla();
@@ -47,6 +48,16 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     //Atributos
     public string clientID;
 
+    // Register where the filehandlers are saved in Client
+    List<FileHandler> register = new List<FileHandler>(10);
+
+    // Register where the byte-arrays are saved in Client
+    List<byte[]> bytes = new List<byte[]>(10);
+
+
+
+
+
     //Construtor
     public remoteClient(string ID, string[] metaServerPorts)
     {
@@ -72,7 +83,23 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         return "[CLIENT]   Ola eu sou o Client!";
     }
 
+    /* File is open */
+    private Boolean isOpen(string filename)
+    {
+        foreach (FileHandler fh in register)
+            if (fh.fileName == filename)
+                return true;
+        return false;
+    }
 
+    /* Get filehandler from register */
+    private FileHandler getFileHandler(string filename)
+    {
+        foreach (FileHandler fh in register)
+            if (fh.fileName == filename)
+                return fh;
+        return null;
+    }
 
     /************************************************************************
      *              Invoked Methods by Pupper Master
@@ -83,13 +110,14 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         FileHandler filehandler;
 
         //1. Check if file is already opened.
-        if (openFiles.ContainsKey(filename)) {
+        if (!isOpen(filename))
+        {
             Console.WriteLine("[CLIENT  open]:  The file is already opened!");
             return null;
         }
 
         //2. Check if there aren't 10 files already opened
-        if (openFiles.Count >= MAX_FILES_OPENED) {
+        if (register.Count >= MAX_FILES_OPENED) {
             Console.WriteLine("[CLIENT  open]:  Can't have 10 opened files at once!");
             return null;
         }
@@ -105,7 +133,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             return null;
         }
 
-        openFiles.Add(filename, filehandler);
+        
+        //openFiles.Add(filename, filehandler);
+        register.Add(filehandler);
         Console.WriteLine("[CLIENT  open]:  Success!");
         return filehandler;
     }
@@ -181,23 +211,21 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
         return;
     }
-    
-    public void write(string filename, byte[] byte_array)
+
+    public void write(int reg, byte[] byteArray)
     {
 
         FileHandler fh = null;
 
-        //1.Find if this client has this file opened
-        if (!openFiles.ContainsKey(filename))
+        //1.Find if this client has this file opened and get the filehandler
+        if ((fh = register[reg]) != null)
         {
             Console.WriteLine("[CLIENT  write]:  File is not yet opened!");
             return;
         }
 
-        fh = openFiles[filename];
-
         //2. Find out which Meta-Server to Call
-        MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
+        MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(fh.fileName)]);
 
 
         //3. If not available, try next one
@@ -214,14 +242,14 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.prepareWrite(this.clientID, filename, byte_array);
+            di.prepareWrite(this.clientID, fh.fileName, byteArray);
         }
 
         //6. Contact Data-Servers to Commit
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.commitWrite(this.clientID, filename);
+            di.commitWrite(this.clientID, fh.fileName);
         }
 
 
@@ -232,27 +260,34 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         return;
     }
 
-    public byte[] read(string filename, int semantics) {
+    public void write(int reg, int byteArray)
+    {
+        write(reg, bytes[byteArray]);
+    }
+
+    public byte[] read(int reg, int semantics, int byteArray) {
 
         byte[] content;
-        
-        //1. Find if file is opened
-        if (!openFiles.ContainsKey(filename)){
-            Console.WriteLine("[CLIENT  read]:  File is not yet opened!");
+
+        FileHandler fh = null;
+
+        //1.Find if this client has this file opened and get the filehandler
+        if ((fh = register[reg]) != null)
+        {
+            Console.WriteLine("[CLIENT  write]:  File is not yet opened!");
             return null;
         }
-
-        //2. Get file handler associated to file
-        FileHandler fh = openFiles[filename];
 
         //3. Contact Data-Server to read
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            content = di.read(@"C:\" + filename, semantics);
+            content = di.read(@"C:\" + fh.fileName, semantics);
 
             if (content != null)
-                Console.WriteLine("[CLIENT  read]:  Success!"); return content;
+                Console.WriteLine("[CLIENT  read]:  Success!");
+            bytes.Insert(byteArray, content);
+            return content;
         }
 
         Console.WriteLine("[CLIENT  read]:  Success!");
