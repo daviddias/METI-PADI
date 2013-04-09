@@ -110,11 +110,11 @@ namespace Puppet_Master
                 case "CREATE": create(parsed[1], parsed[2], Convert.ToInt32(parsed[3]), Convert.ToInt32(parsed[4]), Convert.ToInt32(parsed[5])); break;
                 case "OPEN": open(parsed[1], parsed[2]); break;
                 case "CLOSE": close(parsed[1], parsed[2]); break;
-                case "READ": read(parsed[1], parsed[2], parsed[3], Convert.ToInt32(parsed[4])); break;
+                case "READ": read(parsed[1],  Convert.ToInt32(parsed[2]), parsed[3], Convert.ToInt32(parsed[4])); break;
                 case "WRITE":
                     for (int i = 4; i < parsed.Length; i++)
                         parsed[3] += " "+parsed[i];
-                    write(parsed[1], parsed[2], parsed[3]); 
+                    write(parsed[1],  Convert.ToInt32(parsed[2]), parsed[3]); 
                     break;
                 case "DUMP": dump(parsed[1]); break;
                 case "HELLO": hello(parsed[1]); break;
@@ -247,7 +247,7 @@ namespace Puppet_Master
             rci.close(filename); 
         }
 
-        private void read(string process, string filename, string semantics, int byteArrayRegister)
+        private void read(string process, int reg, string semantics, int byteArrayRegister)
         {
             int DEFAULT = 1;
             int MONOTONIC = 2;
@@ -261,14 +261,14 @@ namespace Puppet_Master
             }
 
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
-            outputBox.Text = System.Text.Encoding.Default.GetString(rci.read(filename, semantic));
+            outputBox.Text = System.Text.Encoding.Default.GetString(rci.read(register[reg].fileName, semantic));
         }
 
-        private void write(string process, string filename, string content)
+        private void write(string process, int reg, string content)
         {
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
             Byte[] bytes = System.Text.Encoding.UTF8.GetBytes(content);
-            rci.write(filename,bytes); 
+            rci.write(register[reg].fileName, bytes); 
         }
 
         private void dump(string process)
