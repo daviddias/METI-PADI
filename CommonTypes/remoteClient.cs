@@ -13,7 +13,7 @@ using System.Runtime.Remoting.Channels.Tcp;
 public interface remoteClientInterface { 
 
     //usado pelo puppet-master
-    void open(string filename);                                                         //DONE
+    FileHandler open(string filename);                                                         //DONE
     void close(string filename);                                                        //DONE
     void create(string filename, int nbDataServers, int readQuorum, int writeQuorum);   //DONE                   
     void delete(string filename);                                                       //TODO
@@ -77,7 +77,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     /************************************************************************
      *              Invoked Methods by Pupper Master
      ************************************************************************/
-    public void open(string filename)
+    public FileHandler open(string filename)
     {
 
         FileHandler filehandler;
@@ -85,13 +85,13 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         //1. Check if file is already opened.
         if (openFiles.ContainsKey(filename)) {
             Console.WriteLine("[CLIENT  open]:  The file is already opened!");
-            return;
+            return null;
         }
 
         //2. Check if there aren't 10 files already opened
         if (openFiles.Count >= MAX_FILES_OPENED) {
             Console.WriteLine("[CLIENT  open]:  Can't have 10 opened files at once!");
-            return;
+            return null;
         }
 
         //3. Contact MetaServers to open
@@ -102,12 +102,12 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         if (filehandler == null){
             Console.WriteLine("[CLIENT  open]:  MetaServer didn't opened the file!");
-            return;
+            return null;
         }
 
         openFiles.Add(filename, filehandler);
         Console.WriteLine("[CLIENT  open]:  Success!");
-        return;
+        return filehandler;
     }
 
     public void close(string filename)

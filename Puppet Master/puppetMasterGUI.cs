@@ -13,6 +13,7 @@ using System.Threading;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
+using System.Collections;
 
 namespace Puppet_Master
 {
@@ -32,6 +33,9 @@ namespace Puppet_Master
         String[] listOfDataServerPorts;
         String[] listOfMetaServerPorts;
         String[] listOfClientPorts;
+
+        // Register where the filehandlers are saved in Puppet Master
+        List<FileHandler> register = new List<FileHandler>();
 
         // Dictonary of Running Processes Key=processID (e.g. c-1) Value=Process
         public Dictionary<string, Process> runningProcesses = new Dictionary<string, Process>();
@@ -232,7 +236,9 @@ namespace Puppet_Master
         private void open(string process,string filename)
         {
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
-            rci.open(filename); 
+            register.Add(rci.open(filename));
+            foreach(FileHandler fh in register)
+                outputBox.Text = "[Puppet  open]:  Registos" + fh.ToString(); 
         }
 
         private void close(string process, string filename)

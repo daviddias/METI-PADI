@@ -39,6 +39,11 @@ public class FileHandler
         isOpen = true;
     }
 
+    /* ToString */
+    public override string ToString()
+    {
+        return "FileHandler: " + this.fileName;
+    }
  
     /* Serializable stuff */
 
