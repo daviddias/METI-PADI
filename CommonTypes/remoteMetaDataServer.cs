@@ -44,7 +44,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     static string bMetaServerPort;
     static int whoAmI; //0, 2 ou 4 to identify which Meta-Server it is 
     static string[] dataServersPorts;
-    static Boolean isFail;
+    static Boolean isfailed;
 
     //Array of fileTables containing file Handlers
     public static Dictionary<string, FileHandler>[] fileTables = new Dictionary<string, FileHandler>[6];
@@ -52,7 +52,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     /* Constructors */
 
     public MyRemoteMetaDataObject(){
-        isFail = false;
+        isfailed = false;
 
         for (int i = 0; i < 6; i++)
             fileTables[i] = new Dictionary<string, FileHandler>();
@@ -62,7 +62,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
     public MyRemoteMetaDataObject(string _localPort, string _aMetaServerPort, string _bMetaServerPort, string[] _dataServersPorts){
 
-        isFail = false;
+        isfailed = false;
         localPort = _localPort;
         aMetaServerPort = _aMetaServerPort;
         bMetaServerPort = _bMetaServerPort;
@@ -109,14 +109,10 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         FileHandler fh;
   
         //1. Is MetaServer Able to Respond (Fail)
-        if (isFail)
+        if (isfailed)
         {
             Console.WriteLine("[METASERVER: open]    The server has is on 'fail'!");
-            Monitor.Enter(fileTables);
-            Monitor.Wait(fileTables);
-            Monitor.Exit(fileTables);
-            fh = null;
-            return fh;
+            return null;
         }
 
 
@@ -151,12 +147,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //String Filename = filehandler.fileName;
 
         //1. Is MetaServer Able to Respond (Fail)
-        if (isFail)
+        if (isfailed)
         {
             Console.WriteLine("[METASERVER: close]    The server has is on 'fail'!");
-            Monitor.Enter(fileTables);
-            Monitor.Wait(fileTables);
-            Monitor.Exit(fileTables);
             return;
         }
 
@@ -182,14 +175,10 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     {
         FileHandler fh;
         //1. Is MetaServer Able to Respond (Fail)
-        if (isFail)
+        if (isfailed)
         {
             Console.WriteLine("[METASERVER: create]    The server has is on 'fail'!");
-            Monitor.Enter(fileTables);
-            Monitor.Wait(fileTables);
-            Monitor.Exit(fileTables);
-            fh = null;
-            return fh;
+            return null;
         }
 
         //2. Does the file already exists? 
@@ -223,13 +212,15 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public void confirmCreate(string clientID, string filename, Boolean created) 
     {
         //1. Is MetaServer Able to Respond (Fail)
-        //TODO
+        if (isfailed)
+        {
+            Console.WriteLine("[METASERVER: confirmCreate]    The server has is on 'fail'!");
+            return;
+        }
 
-        //2. Unlock the File
-        //TODO  
-
-
-
+        //2. Faz unlock ao ficheiro
+        fileTables[Utils.whichMetaServer(filename)][filename].isLocked = false;
+        Console.WriteLine("[METASERVER: confirmCreate]    Success!");
     }
 
     public FileHandler delete(string clientID, FileHandler filehandler)
@@ -255,12 +246,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         Boolean flag = false;
 
         //1. Is MetaServer Able to Respond (Fail)
-        if (isFail)
+        if (isfailed)
         {
             Console.WriteLine("[METASERVER: write]    The server has is on 'fail'!");
-            Monitor.Enter(fileTables);
-            Monitor.Wait(fileTables);
-            Monitor.Exit(fileTables);
             return null;
         }
 
@@ -296,12 +284,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public void confirmWrite(string clientID, FileHandler filehander, Boolean wrote) 
     {
         //1. Is MetaServer Able to Respond (Fail)
-        if (isFail)
+        if (isfailed)
         {
             Console.WriteLine("[METASERVER: confirmWrite]    The server has is on 'fail'!");
-            Monitor.Enter(fileTables);
-            Monitor.Wait(fileTables);
-            Monitor.Exit(fileTables);
             return;
         }
 
@@ -313,9 +298,26 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     /************************************************************************
      *              Invoked Methods by Pupper-Master
      ************************************************************************/
-    public Boolean fail() { return true; }
+    public Boolean fail()
+    {
+        if (isfailed == true)
+        {
+            Console.WriteLine("[METASERVER: fail]    The server is already on fail!");
+            isfailed = true;
+        }
+        Console.WriteLine("[METASERVER: fail]    Success!");
+        return true;
+    }
 
-    public Boolean recover() { return true; }
+    public Boolean recover() {
+        if (isfailed == false)
+        {
+            Console.WriteLine("[METASERVER: recover]    The server was not failed!");
+            return false;
+        }
+        isfailed = false;
+        return true;
+    }
 
     /************************************************************************
      *              Invoked Methods by other Meta-Data Servers

@@ -49,7 +49,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     public string clientID;
 
     // Register where the filehandlers are saved in Client
-    List<FileHandler> register = new List<FileHandler>(10);
+    public static List<FileHandler> register = new List<FileHandler>(10);
 
     // Register where the byte-arrays are saved in Client
     List<byte[]> bytes = new List<byte[]>(10);
@@ -142,9 +142,17 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
     public void close(string filename)
     {
-
+        FileHandler filehandler = null;
         //1. Check if file is really open
-        if (!openFiles.ContainsKey(filename))
+        foreach (FileHandler fh in register){
+            if (fh.fileName == filename){
+                filehandler = fh;
+                break;
+            }
+        }
+
+
+        if (filehandler == null)
         {
             Console.WriteLine("[CLIENT  close]:  The file you want to close isn't open!");
             return;
@@ -152,13 +160,11 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         //3. Contact MetaServers to close
         MyRemoteMetaDataInterface meta_obj = null;
-        int whichMetaServer = Utils.whichMetaServer(filename);
-        meta_obj = Utils.getRemoteMetaDataObj(metaServerPort[whichMetaServer]);
-        FileHandler filehandler = meta_obj.open(clientID, filename);
+        meta_obj = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
         meta_obj.close(clientID, filehandler);
 
         //4. Remove from Open Files 
-        openFiles.Remove(filename);
+        register.Remove(filehandler);
         Console.WriteLine("[CLIENT  close]:  Success!");
         return;
     }
