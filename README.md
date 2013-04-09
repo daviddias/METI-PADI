@@ -34,6 +34,34 @@ Items marked as "✔" are complete and tested
   </tbody>
 </table>
 
+
+### Logger notes
+
+...
+using log4net;
+...
+
+  class{
+    ...
+    private static readonly ILog log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+    ...
+    Method()
+    {
+    log.Debug("This is a DEBUG level message. The most VERBOSE level.");
+    log.Info("Extended information, with higher importance than the Debug call");
+    log.Warn("An unexpected but recoverable situation occurred");
+    log.Error("An unexpected error occurred, an exception was thrown, or is about to be thrown", ex);
+    log.Fatal("Meltdown!", ex);
+    }
+    ...
+  }
+
+
+
+
+
+
+
 ## License
 
 (The MIT License)
