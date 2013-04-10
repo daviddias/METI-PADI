@@ -14,13 +14,13 @@ using log4net;
 public interface remoteClientInterface { 
 
     //usado pelo puppet-master
-    void open(string filename);                                                  //DONE
+    void open(string filename);                                                          //DONE
     void close(string filename);                                                        //DONE
     void create(string filename, int nbDataServers, int readQuorum, int writeQuorum);   //DONE                   
     void delete(string filename);                                                       //todo
-    void write(int reg, byte[] byteArray);                                             //todo
-    void write(int reg, int byteArray);                                             //todo
-    void read(int reg, int semantics, int byteArray);                                                //DONE
+    void write(int reg, byte[] byteArray);                                              //DONE
+    void write(int reg, int byteArray);                                                 //DONE
+    void read(int reg, int semantics, int byteArray);                                    //DONE
 
     //testing communication
     string metodoOla();
@@ -51,14 +51,10 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         
 
     // Register where the filehandlers are saved in Client
-    public static List<FileHandler> register = new List<FileHandler>(10);
+    public static List<FileHandler> register;
 
     // Register where the byte-arrays are saved in Client
     List<byte[]> bytes = new List<byte[]>(10);
-
-
-
-
 
     //Construtor
     public remoteClient(string ID, string[] metaServerPorts)
@@ -70,6 +66,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         this.metaServerPort[3] = metaServerPorts[1];
         this.metaServerPort[4] = metaServerPorts[2];
         this.metaServerPort[5] = metaServerPorts[2];
+
+        bytes = new List<byte[]>(10);
+        register = new List<FileHandler>(10);
 
         System.Console.WriteLine("Client: - " + clientID + " -  is up!");
     }
@@ -88,6 +87,12 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     /* File is open */
     private Boolean isOpen(string filename)
     {
+        Console.WriteLine("[CLIENT isOpened] Count:" + register.Count);
+            
+        {
+            System.Console.WriteLine("[CLIENT isOpened] No open files in this client!");
+            return false;
+        }
         foreach (FileHandler fh in register)
             if (fh.fileName == filename)
                 return true;
@@ -161,8 +166,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
 
         //3. Contact MetaServers to close
-        MyRemoteMetaDataInterface meta_obj = null;
-        meta_obj = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
+        MyRemoteMetaDataInterface meta_obj = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
         meta_obj.close(clientID, filehandler);
 
 
@@ -193,27 +197,27 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
 
         //5. Contact Data-Servers to Prepare
-        log.Info("Launching Prepare to Commit");
+        //log.Info("Launching Prepare to Commit");
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
             di.prepareCreate(this.clientID, filename);
         }
-        log.Info("Launched Prepare to Commit");
+        //log.Info("Launched Prepare to Commit");
 
 
         //6. Contact Data-Servers to Commit
-        log.Info("Going to start commit");
+        //log.Info("Going to start commit");
         foreach (string dataServerPort in fh.dataServersPorts)
         {
-            log.Info("ENTREI NO LOOP DE COMMIT");
+            //log.Info("ENTREI NO LOOP DE COMMIT");
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            log.Info("VOU INVOCAR O COMMIT CREATE : ATRIBUTOS :  " + this.clientID + "   " + filename);
+            //log.Info("VOU INVOCAR O COMMIT CREATE : ATRIBUTOS :  " + this.clientID + "   " + filename);
             
             di.commitCreate(this.clientID, filename);
             
         }
-        log.Info("Commit with Data Servers done");
+        //log.Info("Commit with Data Servers done");
 
         //7. Tell Meta-Data Server to Confirm Creation 
         mdi.confirmCreate(this.clientID, filename, true);
@@ -224,20 +228,56 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
     public void delete(string filename)
     {
+
+        //1. Find out which meta server to call
+        MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
+
+        //2. If not available try next one
+        //TODO
+
+        //3. Invoke delete on meta server
+        FileHandler fh = mdi.delete(this.clientID, filename);
+
+        if (fh == null) {
+            Console.WriteLine("[CLIENT  delete] Meta Server failed to delete!");
+            return;
+        }
+
+        //4. Contact data-server to prepare
+        foreach (string dataServerPort in fh.dataServersPorts)
+        {
+            MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
+            di.prepareDelete(this.clientID, fh.fileName);
+        }
+
+        //5. Contact data-servers to commit
+        foreach (string dataServerPort in fh.dataServersPorts)
+        {
+
+            MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
+            di.commitDelete(this.clientID, fh.fileName);
+        }
+
+        //6. Tell metaserver to confirm deletion
+        mdi.confirmDelete(this.clientID, fh, true);
+
+        Console.WriteLine("[CLIENT  delete]  Success");
         return;
+
     }
 
     public void write(int reg, Byte[] byteArray)
     {
-
         FileHandler fh = null;
 
         //1.Find if this client has this file opened
-        if (!isOpen(register[reg].fileName))
+        if (register.Count == 0 || !isOpen(register[reg].fileName))
         {
             Console.WriteLine("[CLIENT  write]:  File is not yet opened!");
             return;
         }
+
+        Console.WriteLine("[CLIENT  write]:  Fucheiro ta aberto!");
 
         fh = register[reg];
 
@@ -284,15 +324,16 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     }
 
     public void read(int reg, int semantics, int byteArray) {
-
+        //Console.WriteLine("[CLIENT  read]:  Chamou o read!");
         byte[] content;
         
         //1.Find if this client has this file opened
-        if (!isOpen(register[reg].fileName))
+        if (register.Count == 0 || !isOpen(register[reg].fileName))
         {
             Console.WriteLine("[CLIENT  read]:  File is not yet opened!");
             return;
         }
+        //Console.WriteLine("[CLIENT  read]:  O ficheiro esta aberto!");
 
         FileHandler fh = register[reg];
 
@@ -300,7 +341,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            content = di.read(@"C:\" + fh.fileName, semantics);
+            content = di.read(fh.fileName, semantics);
 
             if (content != null)
             {

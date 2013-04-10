@@ -11,9 +11,11 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Threading;
 using System.Runtime.Remoting;
+using System.Runtime.Remoting.Messaging;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Collections;
+using System.Net.Sockets;
 using log4net;
 
 namespace Puppet_Master
@@ -109,6 +111,7 @@ namespace Puppet_Master
                 case "FREEZE": freeze(parsed[1]); break;
                 case "UNFREEZE": unfreeze(parsed[1]); break;
                 case "CREATE": create(parsed[1], parsed[2], Convert.ToInt32(parsed[3]), Convert.ToInt32(parsed[4]), Convert.ToInt32(parsed[5])); break;
+                case "DELETE": delete(parsed[1], parsed[2]); break;
                 case "OPEN": open(parsed[1], parsed[2]); break;
                 case "CLOSE": close(parsed[1], parsed[2]); break;
                 case "READ": read(parsed[1],  Convert.ToInt32(parsed[2]), parsed[3], Convert.ToInt32(parsed[4])); break;
@@ -152,7 +155,7 @@ namespace Puppet_Master
             for (int i = 0; i < nbDataServers; i++)
             {
                 runningProcesses.Add("d-" + i , new Process());
-                runningProcesses["d-" + i].StartInfo.Arguments = (firstDataServerPort + i).ToString();
+                runningProcesses["d-" + i].StartInfo.Arguments = (firstDataServerPort + i).ToString() + " " + i;
                 listOfDataServerPorts += (firstDataServerPort + i).ToString() + " ";
                 runningProcesses["d-" + i].StartInfo.FileName = dataServerPath;
                 runningProcesses["d-" + i].Start();
@@ -341,6 +344,14 @@ namespace Puppet_Master
             //rci.close(filename); 
             OpenRemoteAsyncDelegate RemoteDel = new OpenRemoteAsyncDelegate(rci.close);
             IAsyncResult RemAr = RemoteDel.BeginInvoke(filename, null, null);
+        }
+
+        private void delete(string process, string filename) {
+            remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            //rci.create(filename, nbDataServers, readQuorum, writeQuorum);
+            DeleteRemoteAsyncDelegate RemoteDel = new DeleteRemoteAsyncDelegate(rci.delete);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(filename, null, null);
+            return; 
         }
 
         private void read(string process, int reg, string semantics, int byteArrayRegister)

@@ -19,7 +19,7 @@ public interface MyRemoteMetaDataInterface{
     void close(string ClientID, FileHandler filehandler);
     FileHandler create(string clientID, string filename, int nbServers, int readQuorum, int writeQuorum);
     void confirmCreate(string clientID, string filename, Boolean created);
-    FileHandler delete(string clientID, FileHandler filehandler);
+    FileHandler delete(string clientID, string filename);
     void confirmDelete(string clientID, FileHandler filehandler, Boolean deleted);
     FileHandler write(string clientID, FileHandler filehandler);
     void confirmWrite(string clientID, FileHandler filehander, Boolean wrote);
@@ -228,21 +228,60 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         log.Info("[METASERVER: confirmCreate]    Success!");
     }
 
-    public FileHandler delete(string clientID, FileHandler filehandler)
+    public FileHandler delete(string clientID, string filename)
     {
-        /*
-         *  
-         */
-        return null;
-        //FileHandler fh = new FileHandler();
-        //return fh;
+
+        //1. Is the metaserver able to respond?
+        if (isfailed)
+        {
+            log.Info("[METASERVER: delete]    The server has is on 'fail'!");
+            return null;
+        }
+
+        //2. Does the file exist?
+        if (!fileTables[Utils.whichMetaServer(filename)].ContainsKey(filename))
+        {
+            log.Info("[METASERVER: delete]    File does not exist!");
+            return null; //TODO return exception here! 
+        }
+
+        //3. Get filehandler
+        FileHandler fh = fileTables[Utils.whichMetaServer(filename)][filename];
+
+        //4. O ficheiro está bloqueado?
+        if (fh.isLocked)
+        {
+            log.Info("[METASERVER: delete]    The File is locked!");
+            return null;
+        }
+
+        //5.Faz lock ao ficheiro
+        fh.isLocked = true;
+
+        //4. Return the filehandler
+        log.Info("[METASERVER: delete]    Success!");
+        return fh;
     }
 
     public void confirmDelete(string clientID, FileHandler filehandler, Boolean deleted) 
     {
-        /*
-         * 
-         */ 
+        //1. Is MetaServer Able to Respond (Fail)
+        if (isfailed)
+        {
+            log.Info("[METASERVER: confirmDelete]    The server has is on 'fail'!");
+            return;
+        }
+
+        //2. Apaga metadata associada ao ficheiro
+        if (deleted == true)
+        {
+            fileTables[Utils.whichMetaServer(filehandler.fileName)].Remove(filehandler.fileName);
+            log.Info("[METASERVER: confirmDelete]    Success!");
+            return;
+        }
+
+        fileTables[Utils.whichMetaServer(filehandler.fileName)][filehandler.fileName].isLocked = false;
+        log.Info("[METASERVER: confirmDelete]    File was not deleted!");
     }
 
     public FileHandler write(string clientID, FileHandler filehandler)
@@ -286,7 +325,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         return filehandler;
     }
         
-    public void confirmWrite(string clientID, FileHandler filehander, Boolean wrote) 
+    public void confirmWrite(string clientID, FileHandler filehandler, Boolean wrote) 
     {
         //1. Is MetaServer Able to Respond (Fail)
         if (isfailed)
@@ -296,7 +335,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         }
 
         //2. Faz unlock ao ficheiro
-        filehander.isLocked = false;
+        filehandler.isLocked = false;
         log.Info("[METASERVER: confirmWrite]    Success!");
     }
 
