@@ -1,11 +1,10 @@
-﻿using System;
-using System.IO;
+﻿using log4net;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using log4net;
-
 
 public interface MyRemoteDataInterface
 {
@@ -77,10 +76,18 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     public static List<MutationListItem> mutationList;
 
     //Construtor
-    public MyRemoteDataObject()
+    public MyRemoteDataObject(int dataServerNumber)
     {
         mutationList = new List<MutationListItem>();
-        System.Console.WriteLine("Data Server is up!");
+
+        string path = Environment.ExpandEnvironmentVariables("%HOMEDRIVE%%HOMEPATH%\\PADI-FS\\") + System.Diagnostics.Process.GetCurrentProcess().ProcessName + "-" + dataServerNumber;
+
+        if (!Directory.Exists(path))
+            Directory.CreateDirectory(path);
+        
+        Directory.SetCurrentDirectory(path);
+        log.Info("Data Server is up!");
+        log.Info(Directory.GetCurrentDirectory());
     }
 
     //Metodos auxiliares
@@ -241,12 +248,12 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         log.Info("Processing commitCreate by: " + clientID + " for file: " + local_file_name);
 
         if (isfailed == true){
-            Console.WriteLine("[DATA_SERVER: commitCreate]    The server has failed!");
+            log.Info("[DATA_SERVER: commitCreate]    The server has failed!");
             return false;
         }
 
         if (isfrozen == true){
-            Console.WriteLine("[DATA_SERVER: commitCreate]    The server is frozen!");
+            log.Info("[DATA_SERVER: commitCreate]    The server is frozen!");
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
@@ -254,12 +261,12 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         MutationListItem item = mutationList.Find(i => i.filename == local_file_name && i.clientID == clientID);
         if (item == null){
-            Console.WriteLine("[DATA_SERVER: commitCreate]    The file is not prepared!");
+            log.Info("[DATA_SERVER: commitCreate]    The file is not prepared!");
             return false;
         }
 
         mutationList.Remove(item);
-        File.Create(@"C:\" + local_file_name).Close();
+        File.Create(local_file_name).Close();
         log.Info("Complete commitCreate by: " + clientID + " for file: " + local_file_name);
 
         //Console.WriteLine("[DATA_SERVER: commitCreate]    Success!");

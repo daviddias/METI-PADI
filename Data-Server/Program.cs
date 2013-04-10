@@ -12,6 +12,7 @@ class DataServer
     {
 
         string dataServerPort = args[0];
+        string serverNumber = args[1];
         BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
         provider.TypeFilterLevel = TypeFilterLevel.Full;
         IDictionary props = new Hashtable();
@@ -19,7 +20,7 @@ class DataServer
         TcpChannel channel = new TcpChannel(props, null, provider);
 
         ChannelServices.RegisterChannel(channel, false);
-        MyRemoteDataObject dao = new MyRemoteDataObject();
+        MyRemoteDataObject dao = new MyRemoteDataObject(Int32.Parse(serverNumber));
         RemotingServices.Marshal(dao, "MyRemoteDataObjectName", typeof(MyRemoteDataObject));
 
         System.Console.WriteLine("<enter> para sair...");
