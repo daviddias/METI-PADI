@@ -63,9 +63,7 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
-    <None Include="libs\Log4Net.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    <None Include="libs\Log4Net.config" />
     <Content Include="libs\log4net.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

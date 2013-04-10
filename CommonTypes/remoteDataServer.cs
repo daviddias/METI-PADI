@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
-
+using log4net;
 
 
 public interface MyRemoteDataInterface
@@ -29,10 +29,10 @@ public interface MyRemoteDataInterface
     Boolean receiveFile(string filename, byte[] file);                                  //TODO (after checkpoint)
 
     //usado pelo puppet-master
-    Boolean freeze();                                                                   //DONE
-    Boolean unfreeze();                                                                 //DONE
-    Boolean fail();                                                                     //DONE
-    Boolean recover();                                                                  //DONE
+    void freeze();                                                                   //DONE
+    void unfreeze();                                                                 //DONE
+    void fail();                                                                     //DONE
+    void recover();                                                                  //DONE
 }
 
 public class MutationListItem {
@@ -62,6 +62,9 @@ public class Request {
 
 public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 {
+    private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+    
+
     //Semanticas
     public const int DEFAULT = 1;
     public const int MONOTONIC = 2;
@@ -137,7 +140,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     }
 
     public Boolean commitWrite(string clientID, string local_file_name) {
-    
+        log.Info("Starting commitWrite from client: " + clientID);
         if (isfailed == true){
             Console.WriteLine("[DATA_SERVER: commitWrite]    The server has failed!");
             return false;
@@ -160,7 +163,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         mutationList.Remove(item);
         File.WriteAllBytes(@"C:\" + item.filename, item.byte_array);
-        Console.WriteLine("[DATA_SERVER: commitWrite]    Success!");
+        log.Info("Done commitWrite from client: " + clientID);
         return true; 
     }
 
@@ -235,6 +238,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     }
 
     public Boolean commitCreate(string clientID, string local_file_name) {
+        log.Info("Processing commitCreate by: " + clientID + " for file: " + local_file_name);
 
         if (isfailed == true){
             Console.WriteLine("[DATA_SERVER: commitCreate]    The server has failed!");
@@ -242,9 +246,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         }
 
         if (isfrozen == true){
-
             Console.WriteLine("[DATA_SERVER: commitCreate]    The server is frozen!");
-
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
@@ -258,8 +260,9 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         mutationList.Remove(item);
         File.Create(@"C:\" + local_file_name).Close();
+        log.Info("Complete commitCreate by: " + clientID + " for file: " + local_file_name);
 
-        Console.WriteLine("[DATA_SERVER: commitCreate]    Success!");
+        //Console.WriteLine("[DATA_SERVER: commitCreate]    Success!");
         return true; 
     }
 
@@ -342,23 +345,23 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     public Boolean receiveFile(string filename, byte[] file) { return true; }
 
     //usado pelo puppet-master
-    public Boolean freeze() {
+    public void freeze() {
 
         if (isfailed == true)
         {
             Console.WriteLine("[DATA_SERVER: freeze]    Cannot freeze during server failure!");
-            return false;
+            return;
         }
         isfrozen = true;
         Console.WriteLine("[DATA_SERVER: freeze]    Success!");
-        return true; 
+        return; 
     }
 
-    public Boolean unfreeze() {
+    public void unfreeze() {
 
         if (isfrozen == false){
             Console.WriteLine("[DATA_SERVER: unfreeze]    The server was not frozen!");
-            return false;
+            return;
         }
 
         isfrozen = false;
@@ -368,10 +371,10 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         Monitor.PulseAll(mutationList);
         Monitor.Exit(mutationList);
         Console.WriteLine("[DATA_SERVER: unfreeze]    Sucess!");
-        return true;
+        return;
     }
 
-    public Boolean fail() {
+    public void fail() {
 
         if (isfrozen == true){
             Console.WriteLine("[DATA_SERVER: fail]    Cannot fail while server is frozen!");
@@ -379,17 +382,17 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         isfailed = true;
         Console.WriteLine("[DATA_SERVER: faile]    Success!");
-        return true; 
+        return; 
     }
 
-    public Boolean recover() {
+    public void recover() {
         if (isfailed == false)
         {
             Console.WriteLine("[DATA_SERVER: recover]    The server was not failed!");
-            return false;
+            return;
         }
         isfailed = false;
         Console.WriteLine("[DATA_SERVER: recover]    Success!");
-        return true;
+        return;
     }
 }

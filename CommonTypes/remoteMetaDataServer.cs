@@ -23,8 +23,8 @@ public interface MyRemoteMetaDataInterface{
     void confirmWrite(string clientID, FileHandler filehander, Boolean wrote);
 
     //usado pelo Puppet-Master
-    Boolean fail();
-    Boolean recover();
+    void fail();
+    void recover();
 
     //usado por outros Meta-Servers
     Boolean lockFile(string filename);
@@ -298,7 +298,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     /************************************************************************
      *              Invoked Methods by Pupper-Master
      ************************************************************************/
-    public Boolean fail()
+    public void fail()
     {
         if (isfailed == true)
         {
@@ -306,17 +306,17 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             isfailed = true;
         }
         Console.WriteLine("[METASERVER: fail]    Success!");
-        return true;
+        return;
     }
 
-    public Boolean recover() {
+    public void recover() {
         if (isfailed == false)
         {
             Console.WriteLine("[METASERVER: recover]    The server was not failed!");
-            return false;
+            return;
         }
         isfailed = false;
-        return true;
+        return;
     }
 
     /************************************************************************

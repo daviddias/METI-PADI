@@ -14,6 +14,7 @@ using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Collections;
+using log4net;
 
 namespace Puppet_Master
 {
@@ -22,7 +23,10 @@ namespace Puppet_Master
         /****************************************************************************************
          *                                  Attributes
          ****************************************************************************************/
+
+        private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         
+
         int firstMetaServerPort = 8000;
         int firstClientPort = 8100;
         int firstDataServerPort = 9000;
@@ -210,6 +214,24 @@ namespace Puppet_Master
 
 
 
+
+        /****************************************************************************************
+         *                                  Remote Invocations
+         ****************************************************************************************/
+
+        //Our Delegate to call Assynchronously remote methods
+        public delegate void RemoteAsyncDelegate(); //Used for fail;recover;freeze;unfreeze
+        public delegate void CreateRemoteAsyncDelegate(string filename, int nbDataServers, int readQuorum, int writeQuorum);
+        public delegate void WriteRemoteAsyncDelegate(int fileregister, int bytearrayregister);
+        public delegate void WriteWithContentRemoteAsyncDelegate(int fileregister, byte[] bytearray);
+        public delegate void OpenRemoteAsyncDelegate(string filename);
+        public delegate void CloseRemoteAsyncDelegate(string filename);
+        public delegate void DeleteRemoteAsyncDelegate(string filename);
+        public delegate void ReadRemoteAsyncDelegate(int fileregister, int semantics, int bytearrayregister);
+
+
+
+
         private void fail(string process)
         {
             MyRemoteMetaDataInterface mdi;
@@ -219,13 +241,17 @@ namespace Puppet_Master
             if (process.StartsWith("m-"))
             {
                 mdi = Utils.getRemoteMetaDataObj(listOfMetaServerPorts[(int)Char.GetNumericValue(process[2])]);
-                mdi.fail();
+                //mdi.fail();
+                RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.fail);
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
             }
             // Data Servers
-            if (process.StartsWith("d-"))
+            else if (process.StartsWith("d-"))
             {
                 dsi = Utils.getRemoteDataServerObj(listOfDataServerPorts[(int)Char.GetNumericValue(process[2])]);
-                dsi.fail();
+                //dsi.fail();
+                RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(dsi.fail);
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
             }
             else
                 outputBox.Text = "Cannot fail the process " + process;
@@ -240,29 +266,34 @@ namespace Puppet_Master
             if (process.StartsWith("m-"))
             {
                 mdi = Utils.getRemoteMetaDataObj(listOfMetaServerPorts[(int)Char.GetNumericValue(process[2])]);
-                mdi.recover();
+                //mdi.recover();
+                RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.recover);
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
             }
             // Data Servers
             if (process.StartsWith("d-"))
             {
                 dsi = Utils.getRemoteDataServerObj(listOfDataServerPorts[(int)Char.GetNumericValue(process[2])]);
-                dsi.recover();
+                //dsi.recover();
+                RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(dsi.recover);
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
             }
         }
 
         private void freeze(string process)
         {
             MyRemoteDataInterface dsi;
-
             // Data Servers
             if (process.StartsWith("d-"))
             {
                 dsi = Utils.getRemoteDataServerObj(listOfDataServerPorts[(int)Char.GetNumericValue(process[2])]);
-                dsi.freeze();
+                //dsi.freeze();
+                RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(dsi.freeze);
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
+                log.Info("Freeze sent to " + process);           
             }
             else
                 outputBox.Text = "Cannot freeze the process " + process;
-
         }
 
         private void unfreeze(string process)
@@ -274,37 +305,48 @@ namespace Puppet_Master
             if (process.StartsWith("d-"))
             {
                 dsi = Utils.getRemoteDataServerObj(listOfDataServerPorts[(int)Char.GetNumericValue(process[2])]);
-                dsi.unfreeze();
+                //dsi.unfreeze();
+                RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(dsi.unfreeze);
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
+                log.Info("Unfreeze sent to " + process);                   
             }
             else
                 outputBox.Text = "Cannot unfreeze the process " + process;
-
         }
 
 
         private void create(string process, string filename, int nbDataServers, int readQuorum, int writeQuorum)
         {
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
-            rci.create(filename, nbDataServers, readQuorum, writeQuorum);       
+            //rci.create(filename, nbDataServers, readQuorum, writeQuorum);
+            CreateRemoteAsyncDelegate RemoteDel = new CreateRemoteAsyncDelegate(rci.create);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(filename, nbDataServers, readQuorum, writeQuorum, null, null);
         }
+
+        
 
         private void open(string process,string filename)
         {
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
-            rci.open(filename);
+            //rci.open(filename);
+            OpenRemoteAsyncDelegate RemoteDel = new OpenRemoteAsyncDelegate(rci.open);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(filename, null, null);
+        
         }
+
 
         private void close(string process, string filename)
         {
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
-            rci.close(filename); 
+            //rci.close(filename); 
+            OpenRemoteAsyncDelegate RemoteDel = new OpenRemoteAsyncDelegate(rci.close);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(filename, null, null);
         }
 
         private void read(string process, int reg, string semantics, int byteArrayRegister)
         {
             int DEFAULT = 1;
             int MONOTONIC = 2;
-
             int semantic;
 
             switch (semantics) {
@@ -314,49 +356,44 @@ namespace Puppet_Master
             }
 
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
-            rci.read(reg, semantic, byteArrayRegister);
+            //rci.read(reg, semantic, byteArrayRegister);
+            ReadRemoteAsyncDelegate RemoteDel = new ReadRemoteAsyncDelegate(rci.read);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(reg, semantic, byteArrayRegister, null, null);
         }
 
+  
         private void write(string process, int reg, string content)
         {
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
             Byte[] bytes = System.Text.Encoding.UTF8.GetBytes(content);
-            rci.write(reg, bytes); 
+            //rci.write(reg, bytes); 
+            WriteWithContentRemoteAsyncDelegate RemoteDel = new WriteWithContentRemoteAsyncDelegate(rci.write);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(reg, bytes, null, null);
         }
 
-        private void write(string process, int reg, int byteArray)
+        private void write(string process, int reg, int byteArrayRegister)
         {
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
-            rci.write(reg, byteArray); 
+            //rci.write(reg, byteArray);
+            WriteRemoteAsyncDelegate RemoteDel = new WriteRemoteAsyncDelegate(rci.write);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(reg, byteArrayRegister, null, null);
         }
 
-        private void dump(string process)
-        {
-        }
+        private void dump(string process) { }
 
         /*Communication Testing Method*/
         private void hello(string process)
         {
             outputBox.Text = process;
-
             System.Threading.Thread.Sleep(2000);
-            
             if(process[0] == 'c')
             {
                 remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
                 string result = rci.metodoOla();
                 outputBox.Text = result;
             }
-            if (process[0] == 'm')
-            {
-            }
-            if (process[0] == 'd')
-            {
-            }
+            if (process[0] == 'm') { }
+            if (process[0] == 'd') { }
         }
-
-
-        
-
     }
 }

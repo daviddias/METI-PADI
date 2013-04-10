@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
+using log4net;
 
 
 
@@ -13,7 +14,7 @@ using System.Runtime.Remoting.Channels.Tcp;
 public interface remoteClientInterface { 
 
     //usado pelo puppet-master
-    FileHandler open(string filename);                                                  //DONE
+    void open(string filename);                                                  //DONE
     void close(string filename);                                                        //DONE
     void create(string filename, int nbDataServers, int readQuorum, int writeQuorum);   //DONE                   
     void delete(string filename);                                                       //todo
@@ -46,6 +47,8 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
     //Atributos
     public string clientID;
+    private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        
 
     // Register where the filehandlers are saved in Client
     public static List<FileHandler> register = new List<FileHandler>(10);
@@ -103,7 +106,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     /************************************************************************
      *              Invoked Methods by Pupper Master
      ************************************************************************/
-    public FileHandler open(string filename)
+    public void open(string filename)
     {
 
         FileHandler filehandler;
@@ -112,13 +115,13 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         if (isOpen(filename))
         {
             Console.WriteLine("[CLIENT  open]:  The file is already opened!");
-            return null;
+            return;
         }
 
         //2. Check if there aren't 10 files already opened
         if (register.Count >= MAX_FILES_OPENED) {
             Console.WriteLine("[CLIENT  open]:  Can't have 10 opened files at once!");
-            return null;
+            return;
         }
 
         //3. Contact MetaServers to open
@@ -129,14 +132,14 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         if (filehandler == null){
             Console.WriteLine("[CLIENT  open]:  MetaServer didn't opened the file!");
-            return null;
+            return;
         }
 
         
         //openFiles.Add(filename, filehandler);
         register.Add(filehandler);
         Console.WriteLine("[CLIENT  open]:  Success!");
-        return filehandler;
+        return;
     }
 
     public void close(string filename)
@@ -190,26 +193,32 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
 
         //5. Contact Data-Servers to Prepare
-        //Console.WriteLine("Launching Prepare to Commit");
+        log.Info("Launching Prepare to Commit");
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
             di.prepareCreate(this.clientID, filename);
         }
-        //Console.WriteLine("Launched Prepare to Commit");
+        log.Info("Launched Prepare to Commit");
+
 
         //6. Contact Data-Servers to Commit
+        log.Info("Going to start commit");
         foreach (string dataServerPort in fh.dataServersPorts)
         {
+            log.Info("ENTREI NO LOOP DE COMMIT");
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
+            log.Info("VOU INVOCAR O COMMIT CREATE : ATRIBUTOS :  " + this.clientID + "   " + filename);
+            
             di.commitCreate(this.clientID, filename);
+            
         }
-
+        log.Info("Commit with Data Servers done");
 
         //7. Tell Meta-Data Server to Confirm Creation 
         mdi.confirmCreate(this.clientID, filename, true);
 
-        Console.WriteLine("[CLIENT  create] Success!");
+        log.Info("[CLIENT  create] Success!");
         return;
     }
 
@@ -256,6 +265,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         //6. Contact Data-Servers to Commit
         foreach (string dataServerPort in fh.dataServersPorts)
         {
+
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
             di.commitWrite(this.clientID, fh.fileName);
         }
