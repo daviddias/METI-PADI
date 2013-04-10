@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using log4net;
+
 
 
 
@@ -39,6 +41,8 @@ public interface MyRemoteMetaDataInterface{
 
 public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterface{
 
+    private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
     /* Atributes */
     static string localPort;
     static string aMetaServerPort;
@@ -58,7 +62,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         for (int i = 0; i < 6; i++)
             fileTables[i] = new Dictionary<string, FileHandler>();
 
-        System.Console.WriteLine("Meta-Data Server is up!");
+        log.Info("Meta-Data Server is up!");
     }
 
     public MyRemoteMetaDataObject(string _localPort, string _aMetaServerPort, string _bMetaServerPort, string[] _dataServersPorts){
@@ -80,7 +84,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             { whoAmI = 1; }
             else { whoAmI = 2; }
 
-        Console.WriteLine("Meta Server " + whoAmI + " is up!");
+        log.Info("Meta Server " + whoAmI + " is up!");
     }
 
 
@@ -112,7 +116,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //1. Is MetaServer Able to Respond (Fail)
         if (isfailed)
         {
-            Console.WriteLine("[METASERVER: open]    The server has is on 'fail'!");
+            log.Info("[METASERVER: open]    The server has is on 'fail'!");
             return null;
         }
 
@@ -120,7 +124,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //2.Does the file exist?
         if (!fileTables[Utils.whichMetaServer(Filename)].ContainsKey(Filename))
         {
-            Console.WriteLine("[METASERVER: open]    The file doesn't exist yet (error)!");
+            log.Info("[METASERVER: open]    The file doesn't exist yet (error)!");
             return null; //TODO return exception here! 
         }
 
@@ -134,7 +138,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //4. Tells the other MetaServers to update
         //TODO
 
-        Console.WriteLine("[METASERVER: open]    Success)!");
+        log.Info("[METASERVER: open]    Success)!");
         return fh;
     }
 
@@ -150,7 +154,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //1. Is MetaServer Able to Respond (Fail)
         if (isfailed)
         {
-            Console.WriteLine("[METASERVER: close]    The server has is on 'fail'!");
+            log.Info("[METASERVER: close]    The server has is on 'fail'!");
             return;
         }
 
@@ -158,7 +162,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //2. Has this client a lock in this file? (If yes, denied close)
         if (filehandler.isLocked)
         {
-            Console.WriteLine("[METASERVER: close]    The File is locked!");
+            log.Info("[METASERVER: close]    The File is locked!");
             return;
         }
 
@@ -169,7 +173,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //4. Tells the other MetaServers to update
         //TODO
 
-        Console.WriteLine("[METASERVER: close]    Success)!");
+        log.Info("[METASERVER: close]    Success)!");
     }
 
     public FileHandler create(string clientID, string filename, int nbServers, int readQuorum, int writeQuorum)
@@ -178,14 +182,14 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //1. Is MetaServer Able to Respond (Fail)
         if (isfailed)
         {
-            Console.WriteLine("[METASERVER: create]    The server has is on 'fail'!");
+            log.Info("[METASERVER: create]    The server has is on 'fail'!");
             return null;
         }
 
         //2. Does the file already exists? 
         if (fileTables[Utils.whichMetaServer(filename)].ContainsKey(filename))
         {
-            Console.WriteLine("[METASERVER: create]    File already exists");
+            log.Info("[METASERVER: create]    File already exists");
             return null; //TODO return exception here! 
         }
 
@@ -205,7 +209,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //TODO
 
         //7. Return File-Handler
-        Console.WriteLine("[METASERVER: create]    Success!");
+        log.Info("[METASERVER: create]    Success!");
         return fh;
        
     }
@@ -215,13 +219,13 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //1. Is MetaServer Able to Respond (Fail)
         if (isfailed)
         {
-            Console.WriteLine("[METASERVER: confirmCreate]    The server has is on 'fail'!");
+            log.Info("[METASERVER: confirmCreate]    The server has is on 'fail'!");
             return;
         }
 
         //2. Faz unlock ao ficheiro
         fileTables[Utils.whichMetaServer(filename)][filename].isLocked = false;
-        Console.WriteLine("[METASERVER: confirmCreate]    Success!");
+        log.Info("[METASERVER: confirmCreate]    Success!");
     }
 
     public FileHandler delete(string clientID, FileHandler filehandler)
@@ -249,22 +253,22 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //1. Is MetaServer Able to Respond (Fail)
         if (isfailed)
         {
-            Console.WriteLine("[METASERVER: write]    The server has is on 'fail'!");
+            log.Info("[METASERVER: write]    The server has is on 'fail'!");
             return null;
         }
 
         //2. Does the file already exists? 
         if (!fileTables[Utils.whichMetaServer(filehandler.fileName)].ContainsKey(filehandler.fileName))
         {
-            Console.WriteLine("[METASERVER: write]    The file doesn't exist yet (error)!");
+            log.Info("[METASERVER: write]    The file doesn't exist yet (error)!");
             return null; //TODO return exception here! 
         }
 
-        //Console.WriteLine("[METASERVER: write]    File exists!");
+        //log.Info("[METASERVER: write]    File exists!");
 
         //3. O ficheiro está bloqueado?
         if (filehandler.isLocked){
-            Console.WriteLine("[METASERVER: write]    The File is locked!");
+            log.Info("[METASERVER: write]    The File is locked!");
             return null;
         }
 
@@ -278,7 +282,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         filehandler.isLocked = true;
 
         //6. Devolve o filehandler ao cliente
-        Console.WriteLine("[METASERVER: write]    Success!");
+        log.Info("[METASERVER: write]    Success!");
         return filehandler;
     }
         
@@ -287,13 +291,13 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //1. Is MetaServer Able to Respond (Fail)
         if (isfailed)
         {
-            Console.WriteLine("[METASERVER: confirmWrite]    The server has is on 'fail'!");
+            log.Info("[METASERVER: confirmWrite]    The server has is on 'fail'!");
             return;
         }
 
         //2. Faz unlock ao ficheiro
         filehander.isLocked = false;
-        Console.WriteLine("[METASERVER: confirmWrite]    Success!");
+        log.Info("[METASERVER: confirmWrite]    Success!");
     }
 
     /************************************************************************
@@ -304,20 +308,20 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //1. Is MetaServer Able to Respond (Fail)
         if (isfailed)
         {
-            Console.WriteLine("[METASERVER: confirmCreate]    The server has is on 'fail'!");
+            log.Info("[METASERVER: confirmCreate]    The server has is on 'fail'!");
             return;
         }
 
 
 
-        Console.WriteLine("[METASERVER: fail]    Success!");
+        log.Info("[METASERVER: fail]    Success!");
         return;
     }
 
     public void recover() {
         if (isfailed == false)
         {
-            Console.WriteLine("[METASERVER: recover]    The server was not failed!");
+            log.Info("[METASERVER: recover]    The server was not failed!");
             return;
         }
         isfailed = false;
@@ -328,7 +332,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     {
         if (isfailed == true)
         {
-            Console.WriteLine("[METASERVER: dump]    The server is already on fail!");
+            log.Info("[METASERVER: dump]    The server is already on fail!");
             isfailed = true;
         }
 
@@ -340,9 +344,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             if (i % 2 == 0)
             {
                 if (i == whoAmI)
-                    s += "### I'm the normal responsible for these files ####\n";
+                    s += "### I'm the primary for these files ####\n";
                 else
-                    s += "### I'm not the normal responsible for these files, but have them stored ###\n";
+                    s += "### I'm not the primary for these files, but have them stored ###\n";
             }
             foreach (FileHandler fh in fileTables[i].Values)
                 s += fh.ToString() + "\n";
@@ -352,8 +356,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         }
 
 
-        Console.WriteLine("[METASERVER: dump]    Success!");
-        Console.WriteLine(s);
+        log.Info("[METASERVER: dump]    Success!");
+        log.Info(s);
 
         return;
     }
