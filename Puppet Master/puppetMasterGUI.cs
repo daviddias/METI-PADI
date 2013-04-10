@@ -96,9 +96,15 @@ namespace Puppet_Master
             try { if (lines[0] == "") { return; } }
             catch (IndexOutOfRangeException) {  return;  }
             String nextSept = lines[0];
+
             lines = lines.Where((val, idx) => idx != 0).ToArray();
             scriptTextBox.Lines = lines;
+
+            if (nextSept.StartsWith("#"))
+                return;
             currentStep.Text = nextSept;
+
+
 
             String[] p = {" ", "\t" ,", "};
             string[] parsed = nextSept.Split(p, StringSplitOptions.None);
