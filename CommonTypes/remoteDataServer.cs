@@ -127,7 +127,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         }
 
         //Verifica a existencia do ficheiro
-        if (!File.Exists(@"C:\" + local_file_name))
+        if (!File.Exists(local_file_name))
         {
             Console.WriteLine("[DATA_SERVER: PrepareWrite]    The file doesn't exist!");
             return false;
@@ -169,7 +169,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         }
 
         mutationList.Remove(item);
-        File.WriteAllBytes(@"C:\" + item.filename, item.byte_array);
+        File.WriteAllBytes(item.filename, item.byte_array);
         log.Info("Done commitWrite from client: " + clientID);
         return true; 
     }
@@ -224,7 +224,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         }
 
         //Verifica a existencia do ficheiro
-        if (File.Exists(@"C:\" + local_file_name))
+        if (File.Exists(local_file_name))
         {
             Console.WriteLine("[DATA_SERVER: PrepareCreate]    The file already exist!");
             return false;
@@ -292,7 +292,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         }
 
         //Verifica a existencia do ficheiro
-        if (!File.Exists(@"C:\" + local_file_name))
+        if (!File.Exists(local_file_name))
         {
             Console.WriteLine("[DATA_SERVER: prepareDelete]    The file doesn't exist!");
             return false;
@@ -338,8 +338,8 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         }
 
         mutationList.Remove(item);
-        File.GetAccessControl(@"C:\" + local_file_name);
-        File.Delete(@"C:\" + local_file_name);
+        File.GetAccessControl(local_file_name);
+        File.Delete(local_file_name);
 
         Console.WriteLine("[DATA_SERVER: commitDelete]    Success!");
         return true; 
