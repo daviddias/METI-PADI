@@ -212,67 +212,73 @@ namespace Puppet_Master
 
         private void fail(string process)
         {
-            remoteClientInterface rci;
             MyRemoteMetaDataInterface mdi;
             MyRemoteDataInterface dsi;
-            // Clients
-            if(process.StartsWith("c-"))
-                rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+       
             // Metadata Servers
-            if(process.StartsWith("m-"))
-                mdi = Utils.getRemoteMetaDataObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            if (process.StartsWith("m-"))
+            {
+                mdi = Utils.getRemoteMetaDataObj(listOfMetaServerPorts[(int)Char.GetNumericValue(process[2])]);
+                mdi.fail();
+            }
             // Data Servers
-            if(process.StartsWith("d-"))
-                dsi = Utils.getRemoteDataServerObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
-
+            if (process.StartsWith("d-"))
+            {
+                dsi = Utils.getRemoteDataServerObj(listOfDataServerPorts[(int)Char.GetNumericValue(process[2])]);
+                dsi.fail();
+            }
+            else
+                outputBox.Text = "Cannot fail the process " + process;
         }
 
         private void recover(string process)
         {
-            remoteClientInterface rci;
             MyRemoteMetaDataInterface mdi;
             MyRemoteDataInterface dsi;
-            // Clients
-            if (process.StartsWith("c-"))
-                rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+
             // Metadata Servers
             if (process.StartsWith("m-"))
-                mdi = Utils.getRemoteMetaDataObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            {
+                mdi = Utils.getRemoteMetaDataObj(listOfMetaServerPorts[(int)Char.GetNumericValue(process[2])]);
+                mdi.recover();
+            }
             // Data Servers
             if (process.StartsWith("d-"))
-                dsi = Utils.getRemoteDataServerObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            {
+                dsi = Utils.getRemoteDataServerObj(listOfDataServerPorts[(int)Char.GetNumericValue(process[2])]);
+                dsi.recover();
+            }
         }
 
         private void freeze(string process)
         {
-            remoteClientInterface rci;
-            MyRemoteMetaDataInterface mdi;
             MyRemoteDataInterface dsi;
-            // Clients
-            if (process.StartsWith("c-"))
-                rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
-            // Metadata Servers
-            if (process.StartsWith("m-"))
-                mdi = Utils.getRemoteMetaDataObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+
             // Data Servers
             if (process.StartsWith("d-"))
-                dsi = Utils.getRemoteDataServerObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            {
+                dsi = Utils.getRemoteDataServerObj(listOfDataServerPorts[(int)Char.GetNumericValue(process[2])]);
+                dsi.freeze();
+            }
+            else
+                outputBox.Text = "Cannot freeze the process " + process;
+
         }
 
         private void unfreeze(string process)
         {
-            remoteClientInterface rci;
-            MyRemoteMetaDataInterface mdi;
+
             MyRemoteDataInterface dsi;
-            // Clients
-            if (process.StartsWith("c-"))
-                rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
-            // Metadata Servers
-            if (process.StartsWith("m-"))
-                mdi = Utils.getRemoteMetaDataObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+
             // Data Servers
             if (process.StartsWith("d-"))
-                dsi = Utils.getRemoteDataServerObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            {
+                dsi = Utils.getRemoteDataServerObj(listOfDataServerPorts[(int)Char.GetNumericValue(process[2])]);
+                dsi.unfreeze();
+            }
+            else
+                outputBox.Text = "Cannot unfreeze the process " + process;
+
         }
 
 

@@ -104,10 +104,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         //showFilesinMutation();
 
         if (isfailed == true){
-            Console.WriteLine("[DATA_SERVER: PrepareWrite]    The server has failed!");
-            Monitor.Enter(mutationList);
-            Monitor.Wait(mutationList);
-            Monitor.Exit(mutationList);
+            Console.WriteLine("[DATA_SERVER: prepareWrite]    The server has failed!");
             return false;
         }
 
@@ -143,9 +140,6 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     
         if (isfailed == true){
             Console.WriteLine("[DATA_SERVER: commitWrite]    The server has failed!");
-            Monitor.Enter(mutationList);
-            Monitor.Wait(mutationList);
-            Monitor.Exit(mutationList);
             return false;
         }
 
@@ -179,9 +173,6 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         if (isfailed == true)
         {
             Console.WriteLine("[DATA_SERVER: read]    The server has failed!");
-            Monitor.Enter(mutationList);
-            Monitor.Wait(mutationList);
-            Monitor.Exit(mutationList);
             return bytes;
         }
 
@@ -210,9 +201,6 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         if (isfailed == true)
         {
             Console.WriteLine("[DATA_SERVER: PrepareCreate]    The server has is on 'fail'!");
-            Monitor.Enter(mutationList);
-            Monitor.Wait(mutationList);
-            Monitor.Exit(mutationList);
             return false;
         }
 
@@ -250,9 +238,6 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         if (isfailed == true){
             Console.WriteLine("[DATA_SERVER: commitCreate]    The server has failed!");
-            Monitor.Enter(mutationList);
-            Monitor.Wait(mutationList);
-            Monitor.Exit(mutationList);
             return false;
         }
 
@@ -283,9 +268,6 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         if (isfailed == true)
         {
             Console.WriteLine("[DATA_SERVER: prepareDelete]    The server has failed!");
-            Monitor.Enter(mutationList);
-            Monitor.Wait(mutationList);
-            Monitor.Exit(mutationList);
             return false;
         }
 
@@ -325,9 +307,6 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         if (isfailed == true)
         {
             Console.WriteLine("[DATA_SERVER: commitDelete]    The server has failed!");
-            Monitor.Enter(mutationList);
-            Monitor.Wait(mutationList);
-            Monitor.Exit(mutationList);
             return false;
         }
 
@@ -371,6 +350,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             return false;
         }
         isfrozen = true;
+        Console.WriteLine("[DATA_SERVER: freeze]    Success!");
         return true; 
     }
 
@@ -387,7 +367,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         Monitor.PulseAll(mutationList);
         Monitor.Exit(mutationList);
-        Console.WriteLine("[DATA_SERVER: unfreeze]    Sucesso!");
+        Console.WriteLine("[DATA_SERVER: unfreeze]    Sucess!");
         return true;
     }
 
@@ -395,17 +375,21 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         if (isfrozen == true){
             Console.WriteLine("[DATA_SERVER: fail]    Cannot fail while server is frozen!");
-
-            Monitor.Enter(mutationList);
-            Monitor.Wait(mutationList);
-            Monitor.Exit(mutationList);
         }
 
         isfailed = true;
+        Console.WriteLine("[DATA_SERVER: faile]    Success!");
         return true; 
     }
 
     public Boolean recover() {
+        if (isfailed == false)
+        {
+            Console.WriteLine("[DATA_SERVER: recover]    The server was not failed!");
+            return false;
+        }
+        isfailed = false;
+        Console.WriteLine("[DATA_SERVER: recover]    Success!");
         return true;
     }
 }
