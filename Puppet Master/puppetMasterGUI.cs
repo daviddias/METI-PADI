@@ -379,7 +379,12 @@ namespace Puppet_Master
             IAsyncResult RemAr = RemoteDel.BeginInvoke(reg, byteArrayRegister, null, null);
         }
 
-        private void dump(string process) { }
+        private void dump(string process) 
+        {
+            MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(listOfMetaServerPorts[(int)Char.GetNumericValue(process[2])]);
+            RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.dump);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
+        }
 
         /*Communication Testing Method*/
         private void hello(string process)

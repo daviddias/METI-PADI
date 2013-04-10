@@ -42,7 +42,20 @@ public class FileHandler
     /* ToString */
     public override string ToString()
     {
-        return "FileHandler: " + this.fileName;
+        string s = "Filename: " + this.fileName + "\n";
+        s += "\t" + "Size - " + this.fileSize + "\n";
+        s += "\t" + "Number of Data Severs - " + this.nbServers + "\n";
+        s += "\t" + "Read Quorum - " + this.readQuorum + "\n";
+        s += "\t" + "Write Quorum - " + this.writeQuorum + "\n";
+
+        /*
+         * Falta por o pair (dataserver, localname)
+         * 
+        s += "\t" + "Data where the file is open:\n";
+        foreach(string data in par_dataserver_local_name)
+        */
+
+        return s;
     }
  
     /* Serializable stuff */

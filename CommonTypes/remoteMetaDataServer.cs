@@ -25,6 +25,7 @@ public interface MyRemoteMetaDataInterface{
     //usado pelo Puppet-Master
     void fail();
     void recover();
+    void dump();
 
     //usado por outros Meta-Servers
     Boolean lockFile(string filename);
@@ -79,7 +80,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             { whoAmI = 1; }
             else { whoAmI = 2; }
 
-        Console.WriteLine("Meta Server " + whoAmI + "is up!");
+        Console.WriteLine("Meta Server " + whoAmI + " is up!");
     }
 
 
@@ -300,11 +301,15 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
      ************************************************************************/
     public void fail()
     {
-        if (isfailed == true)
+        //1. Is MetaServer Able to Respond (Fail)
+        if (isfailed)
         {
-            Console.WriteLine("[METASERVER: fail]    The server is already on fail!");
-            isfailed = true;
+            Console.WriteLine("[METASERVER: confirmCreate]    The server has is on 'fail'!");
+            return;
         }
+
+
+
         Console.WriteLine("[METASERVER: fail]    Success!");
         return;
     }
@@ -316,6 +321,40 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             return;
         }
         isfailed = false;
+        return;
+    }
+
+    public void dump()
+    {
+        if (isfailed == true)
+        {
+            Console.WriteLine("[METASERVER: dump]    The server is already on fail!");
+            isfailed = true;
+        }
+
+
+
+        string s = "Metadata stored in this Metadata Server:\n\n";
+        for (int i = 0; i < 6; i++)
+        {
+            if (i % 2 == 0)
+            {
+                if (i == whoAmI)
+                    s += "### I'm the normal responsible for these files ####\n";
+                else
+                    s += "### I'm not the normal responsible for these files, but have them stored ###\n";
+            }
+            foreach (FileHandler fh in fileTables[i].Values)
+                s += fh.ToString() + "\n";
+
+            if (i % 2 != 0)
+                s += "\t-----------------------------\n\n";
+        }
+
+
+        Console.WriteLine("[METASERVER: dump]    Success!");
+        Console.WriteLine(s);
+
         return;
     }
 
