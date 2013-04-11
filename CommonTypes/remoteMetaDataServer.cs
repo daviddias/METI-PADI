@@ -194,12 +194,27 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         }
 
         //3. Decide where the fill will be hosted
+        //3.1 There are enought Data Servers in the system to meet the required replication?
+        if (nbServers > dataServersPorts.Length)
+        {
+            log.Info("[METASERVER: create]    There aren't enought Data Servers to meet the required replication");
+            return null; //TODO return exception here! 
+        }
+        
+        //3.2 Select the first enougths DataServers to store the data - DUMB WAY
+        string[] selectedDataServers = new string[nbServers];
+        for (int i = 0; i < nbServers; i++)
+            selectedDataServers[i] = dataServersPorts[i];
+
         //TODO - Use info from Load Balacing to decide
-        //Using all of them, by this I mean the only one
+
+
+
+
 
         //4. Create File-Handler 
         //Console.WriteLine("Creating new File Handle");
-        fh = new FileHandler(filename, 0, nbServers, dataServersPorts, readQuorum, writeQuorum, 1);
+        fh = new FileHandler(filename, 0, nbServers, selectedDataServers, readQuorum, writeQuorum, 1);
         //Console.WriteLine("Created new File Handle");
         
         //5. Save the File-Handler
