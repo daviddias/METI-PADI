@@ -290,12 +290,12 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //2. Apaga metadata associada ao ficheiro
         if (deleted == true)
         {
-            fileTables[Utils.whichMetaServer(filehandler.fileName)].Remove(filehandler.fileName);
+            fileTables[Utils.whichMetaServer(filehandler.filenameGlobal)].Remove(filehandler.filenameGlobal);
             log.Info("[METASERVER: confirmDelete]    Success!");
             return;
         }
 
-        fileTables[Utils.whichMetaServer(filehandler.fileName)][filehandler.fileName].isLocked = false;
+        fileTables[Utils.whichMetaServer(filehandler.filenameGlobal)][filehandler.filenameGlobal].isLocked = false;
         log.Info("[METASERVER: confirmDelete]    File was not deleted!");
     }
 
@@ -312,7 +312,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         }
 
         //2. Does the file already exists? 
-        if (!fileTables[Utils.whichMetaServer(filehandler.fileName)].ContainsKey(filehandler.fileName))
+        if (!fileTables[Utils.whichMetaServer(filehandler.filenameGlobal)].ContainsKey(filehandler.filenameGlobal))
         {
             log.Info("[METASERVER: write]    The file doesn't exist yet (error)!");
             return null; //TODO return exception here! 

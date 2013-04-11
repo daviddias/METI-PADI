@@ -16,8 +16,8 @@ public interface MyRemoteDataInterface
     Boolean prepareWrite(string clientID, string local_file_name, Byte[] byte_array);   //DONE
     Boolean commitWrite(string clientID, string local_file_name);                       //DONE
     byte[] read(string local_file_name, int semantic);                                  //SEMI-DONE (ignora a semantica)
-    TwoPCAssynchReturn prepareCreate(string transactionID, string clientID, string local_file_name);                     //DONE
-    TwoPCAssynchReturn commitCreate(string transactionID, string clientID, string local_file_name);                      //DONE
+    TransactionDTO prepareCreate(string transactionID, string clientID, string local_file_name);                     //DONE
+    TransactionDTO commitCreate(string transactionID, string clientID, string local_file_name);                      //DONE
     Boolean prepareDelete(string clientID, string local_file_name);                     //DONE
     Boolean commitDelete(string clientID, string local_file_name);                      //DONE
 
@@ -48,21 +48,7 @@ public class MutationListItem {
     }
 }
 
-[Serializable]
-public class TwoPCAssynchReturn {
-    public string transctionID;
-    public string clientID;
-    public string filename;
 
-    public Boolean success;
-
-    public TwoPCAssynchReturn(string tid, string cid, string fn, Boolean scc) {
-        transctionID = tid;
-        clientID = cid;
-        filename = fn;
-        success = scc;
-    }
-}
 
 public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 {
@@ -211,12 +197,12 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         return bytes;
     }
 
-    public TwoPCAssynchReturn prepareCreate(string transactionID, string clientID, string local_file_name) {
+    public TransactionDTO prepareCreate(string transactionID, string clientID, string local_file_name) {
 
         if (isfailed == true)
         {
             Console.WriteLine("[DATA_SERVER: PrepareCreate]    The server has is on 'fail'!");
-            return new TwoPCAssynchReturn(transactionID, clientID, local_file_name, false);
+            return new TransactionDTO(transactionID, clientID, local_file_name, false);
         }
 
         if (isfrozen == true)
@@ -232,30 +218,30 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         if (File.Exists(local_file_name))
         {
             Console.WriteLine("[DATA_SERVER: PrepareCreate]    The file already exist!");
-            return new TwoPCAssynchReturn(transactionID, clientID, local_file_name, false);
+            return new TransactionDTO(transactionID, clientID, local_file_name, false);
         }
 
         //Verifica se o ficheiro ja esta a ser alterado
         if (mutationList.Find(f => f.filename == local_file_name) != null)
         {
             Console.WriteLine("[DATA_SERVER: PrepareCreate]    File is being used by other process!");
-            return new TwoPCAssynchReturn(transactionID, clientID, local_file_name, false);
+            return new TransactionDTO(transactionID, clientID, local_file_name, false);
         }
 
         MutationListItem mutationEntry = new MutationListItem(local_file_name, clientID, null);
         mutationList.Add(mutationEntry);
 
         Console.WriteLine("[DATA_SERVER: PrepareCreate]    Success!");
-        return new TwoPCAssynchReturn(transactionID, clientID, local_file_name, true); 
+        return new TransactionDTO(transactionID, clientID, local_file_name, true); 
     }
 
-    public TwoPCAssynchReturn commitCreate(string transactionID, string clientID, string local_file_name)
+    public TransactionDTO commitCreate(string transactionID, string clientID, string local_file_name)
     {
         //log.Info("Processing commitCreate by: " + clientID + " for file: " + local_file_name);
 
         if (isfailed == true){
             log.Info("[DATA_SERVER: commitCreate]    The server has failed!");
-            return new TwoPCAssynchReturn(transactionID, clientID, local_file_name, false);
+            return new TransactionDTO(transactionID, clientID, local_file_name, false);
         }
 
         if (isfrozen == true){
@@ -268,7 +254,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         MutationListItem item = mutationList.Find(i => i.filename == local_file_name && i.clientID == clientID);
         if (item == null){
             log.Info("[DATA_SERVER: commitCreate]    The file is not prepared!");
-            return new TwoPCAssynchReturn(transactionID, clientID, local_file_name, false);
+            return new TransactionDTO(transactionID, clientID, local_file_name, false);
         }
 
         mutationList.Remove(item);
@@ -276,7 +262,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         log.Info("Complete commitCreate by: " + clientID + " for file: " + local_file_name);
 
         //Console.WriteLine("[DATA_SERVER: commitCreate]    Success!");
-        return new TwoPCAssynchReturn(transactionID, clientID, local_file_name, true);
+        return new TransactionDTO(transactionID, clientID, local_file_name, true);
     }
 
     public Boolean prepareDelete(string clientID, string local_file_name) {
