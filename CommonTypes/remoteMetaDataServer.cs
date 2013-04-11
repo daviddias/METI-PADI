@@ -208,13 +208,16 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         //TODO - Use info from Load Balacing to decide
 
-
+        // 3.3 Generate localfilenames
+        string[] localNames = new string[nbServers];
+        for (int i = 0; i < nbServers; i++)
+            localNames[i] = Utils.genLocalName("m-" + whoAmI);
 
 
 
         //4. Create File-Handler 
         //Console.WriteLine("Creating new File Handle");
-        fh = new FileHandler(filename, 0, nbServers, selectedDataServers, readQuorum, writeQuorum, 1);
+        fh = new FileHandler(filename, 0, nbServers, selectedDataServers, localNames, readQuorum, writeQuorum, 1);
         //Console.WriteLine("Created new File Handle");
         
         //5. Save the File-Handler

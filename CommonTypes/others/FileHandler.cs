@@ -18,6 +18,8 @@ public class FileHandler
     public int writeQuorum;
     public long nFileAccess;
     public long version;
+    public Dictionary<string, string> dataServersFiles = new Dictionary<string, string>(); // store the local filename for each dataserver (dataserver, localFileName)
+
 
 
 
@@ -32,7 +34,7 @@ public class FileHandler
 
     /* Constructor */
     public FileHandler(String fileName, long fileSize, int nbServers,
-        String[] dataServersPorts, int readQuorum, int writeQuorum, long nFileAccess)
+        String[] dataServersPorts, String[] localNames, int readQuorum, int writeQuorum, long nFileAccess)
     {
         this.filenameGlobal = fileName;
         this.fileSize = fileSize;
@@ -41,6 +43,10 @@ public class FileHandler
         this.readQuorum = readQuorum;
         this.writeQuorum = writeQuorum;
         this.nFileAccess = nFileAccess;
+
+        for (int i = 0; i < nbServers; i++)
+            dataServersFiles.Add(dataServersPorts[i], localNames[i]);
+
         isOpen = true;
     }
 
@@ -53,12 +59,11 @@ public class FileHandler
         s += "\t" + "Read Quorum - " + this.readQuorum + "\n";
         s += "\t" + "Write Quorum - " + this.writeQuorum + "\n";
 
-        /*
-         * Falta por o pair (dataserver, localname)
-         * 
-        s += "\t" + "Data where the file is open:\n";
-        foreach(string data in par_dataserver_local_name)
-        */
+        s += "\t" + "DataServers where the file is open:\n";
+        s += "\t\t\tDataServer\tLocal Filename";
+        foreach (string dataServer in dataServersFiles.Keys)
+            s += "\t\t\t " + dataServer + " \t " + dataServersFiles[dataServer] + "\n";
+
 
         return s;
     }
