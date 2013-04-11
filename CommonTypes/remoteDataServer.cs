@@ -16,8 +16,8 @@ public interface MyRemoteDataInterface
     Boolean prepareWrite(string clientID, string local_file_name, Byte[] byte_array);   //DONE
     Boolean commitWrite(string clientID, string local_file_name);                       //DONE
     byte[] read(string local_file_name, int semantic);                                  //SEMI-DONE (ignora a semantica)
-    TransactionDTO prepareCreate(string transactionID, string clientID, string local_file_name);                     //DONE
-    TransactionDTO commitCreate(string transactionID, string clientID, string local_file_name);                      //DONE
+    TransactionDTO prepareCreate(TransactionDTO dto);                                   //DONE
+    TransactionDTO commitCreate(TransactionDTO dto);                                    //DONE
     Boolean prepareDelete(string clientID, string local_file_name);                     //DONE
     Boolean commitDelete(string clientID, string local_file_name);                      //DONE
 
@@ -53,8 +53,7 @@ public class MutationListItem {
 public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 {
     private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-    
-
+   
     //Semanticas
     public const int DEFAULT = 1;
     public const int MONOTONIC = 2;
@@ -88,16 +87,18 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         }
     }
 
-    public override object InitializeLifetimeService()
-    {
-        return null;
-    }
+    public override object InitializeLifetimeService() { return null;  }
 
-    //METODOS REMOTOS
-    public string MetodoOla()
-    {
-        return "[DATA_SERVER]   Ola eu sou o Data Server!";
-    }
+    // Communication Test Method
+    public string MetodoOla()  { return "[DATA_SERVER]   Ola eu sou o Data Server!";  }
+
+
+    /************************************************************************
+     *          
+     *                           Remote Methods
+     *              
+     ************************************************************************/
+
 
     //Usado pelo cliente
     public Boolean prepareWrite(string clientID, string local_file_name, Byte[] byte_array) {
@@ -165,6 +166,11 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         return true; 
     }
 
+
+
+
+
+
     public byte[] read(string local_file_name, int semantic)
     {
 
@@ -197,72 +203,84 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         return bytes;
     }
 
-    public TransactionDTO prepareCreate(string transactionID, string clientID, string local_file_name) {
+
+
+
+
+
+    public TransactionDTO prepareCreate(TransactionDTO dto) {
+        TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameGlobal);
 
         if (isfailed == true)
         {
-            Console.WriteLine("[DATA_SERVER: PrepareCreate]    The server has is on 'fail'!");
-            return new TransactionDTO(transactionID, clientID, local_file_name, false);
+            log.Info("CREATE :: PrepareCreate : This server is 'failed' can't comply with the request");
+            newDTO.success = false;
+            return newDTO;
         }
 
         if (isfrozen == true)
         {
-            Console.WriteLine("[DATA_SERVER: PrepareCreate]    The server is frozen!");
-
+            log.Info("CREATE :: PrepareCreate : This server is 'frozen' can't comply with the request right now");
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
         }
 
         //Verifica a existencia do ficheiro
-        if (File.Exists(local_file_name))
+        if (File.Exists(dto.filenameGlobal))
         {
-            Console.WriteLine("[DATA_SERVER: PrepareCreate]    The file already exist!");
-            return new TransactionDTO(transactionID, clientID, local_file_name, false);
+            log.Info("CREATE :: PrepareCreate : The file requested to create already exists");
+            newDTO.success = false;
+            return newDTO;
         }
 
         //Verifica se o ficheiro ja esta a ser alterado
-        if (mutationList.Find(f => f.filename == local_file_name) != null)
+        if (mutationList.Find(f => f.filename == dto.filenameGlobal) != null)
         {
-            Console.WriteLine("[DATA_SERVER: PrepareCreate]    File is being used by other process!");
-            return new TransactionDTO(transactionID, clientID, local_file_name, false);
+            log.Info("CREATE :: PrepareCreate : The file requested to create is already being manipulated by other process");
+            newDTO.success = false;
+            return newDTO;
         }
 
-        MutationListItem mutationEntry = new MutationListItem(local_file_name, clientID, null);
+        MutationListItem mutationEntry = new MutationListItem(dto.filenameGlobal, dto.clientID, null);
         mutationList.Add(mutationEntry);
 
-        Console.WriteLine("[DATA_SERVER: PrepareCreate]    Success!");
-        return new TransactionDTO(transactionID, clientID, local_file_name, true); 
+        log.Info("CREATE :: PrepareCreate : Operation Complete");
+        newDTO.success = true;
+        return newDTO;
     }
 
-    public TransactionDTO commitCreate(string transactionID, string clientID, string local_file_name)
+    public TransactionDTO commitCreate(TransactionDTO dto)
     {
-        //log.Info("Processing commitCreate by: " + clientID + " for file: " + local_file_name);
+        TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameGlobal);
 
+     
         if (isfailed == true){
-            log.Info("[DATA_SERVER: commitCreate]    The server has failed!");
-            return new TransactionDTO(transactionID, clientID, local_file_name, false);
+            log.Info("CREATE :: CommitCreate : This server is 'failed' can't comply with the request");
+            newDTO.success = false;
+            return newDTO;
         }
 
         if (isfrozen == true){
-            log.Info("[DATA_SERVER: commitCreate]    The server is frozen!");
+            log.Info("CREATE :: CommitCreate : This server is 'frozen' can't comply with the request right now");
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
         }
 
-        MutationListItem item = mutationList.Find(i => i.filename == local_file_name && i.clientID == clientID);
+        MutationListItem item = mutationList.Find(i => i.filename == dto.filenameGlobal && i.clientID == dto.clientID);
         if (item == null){
-            log.Info("[DATA_SERVER: commitCreate]    The file is not prepared!");
-            return new TransactionDTO(transactionID, clientID, local_file_name, false);
+            log.Info("CREATE :: CommitCreate : There was no request before for 'Prepare' can't fast forward");          
+            newDTO.success = false;
+            return newDTO;
         }
 
         mutationList.Remove(item);
-        File.Create(local_file_name).Close();
-        log.Info("Complete commitCreate by: " + clientID + " for file: " + local_file_name);
+        File.Create(dto.filenameGlobal).Close();
 
-        //Console.WriteLine("[DATA_SERVER: commitCreate]    Success!");
-        return new TransactionDTO(transactionID, clientID, local_file_name, true);
+        log.Info("CREATE :: CommitCreate : Operation complete by Client: " + dto.clientID + " for file: " + dto.filenameGlobal);
+        newDTO.success = true;
+        return newDTO;
     }
 
     public Boolean prepareDelete(string clientID, string local_file_name) {

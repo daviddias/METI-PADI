@@ -57,8 +57,10 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         byteArrayRegister = new List<byte[]>(10);
         register = new List<FileHandler>(10);
 
-        quorunReader = new Dictionary<string, int>();
+        readQuorum = new Dictionary<string, int>();
         writeQUORUM = new Dictionary<string,int>();
+        createQUORUM = new Dictionary<string, int>();
+
 
         System.Console.WriteLine("Client: - " + clientID + " -  is up!");
     }
@@ -67,16 +69,13 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     public override object InitializeLifetimeService() { return null; }
 
     /* communication testing */
-    public string metodoOla()
-    {
-        return "[CLIENT]   Ola eu sou o Client!";
-    }
+    public string metodoOla() { return "[CLIENT]   Ola eu sou o Client!"; }
 
     /* File is open */
     private Boolean isOpen(string filename)
     {
         foreach (FileHandler fh in register)
-            if (fh.filenameGlobal == filename)
+            if (fh.filenameGlobal == filename) //!Not sure if the comparison works in C# -> Check it!
                 return true;
         return false;
     }
@@ -104,6 +103,150 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
      *                 Invoked Methods by Pupper Master
      *              
      ************************************************************************/
+
+
+
+
+
+
+    /*------------------------------------------------------------------------         
+     *                                   CREATE
+     *-----------------------------------------------------------------------*/
+
+    // Delegates
+    //public delegate TransactionDTO prepareCreateRemoteAsyncDelegate(string transactionID, string clientID, string local_file_name);
+    //public delegate TransactionDTO commitCreateRemoteAsyncDelegate(string transactionID, string clientID, string local_file_name);
+    public delegate TransactionDTO prepareCreateRemoteAsyncDelegate(TransactionDTO dto);
+    public delegate TransactionDTO commitCreateRemoteAsyncDelegate(TransactionDTO dto);
+
+
+
+    private static Dictionary<string, int> createQUORUM;  //Key - Transaction ID ; int - number of responses
+
+
+    // Callbacks
+    public static void prepareCreateRemoteAsyncCallBack(IAsyncResult ar)
+    {
+        prepareCreateRemoteAsyncDelegate del = (prepareCreateRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        TransactionDTO assyncResult = del.EndInvoke(ar);
+        log.Info(assyncResult.clientID + " CREATE ::  Call Back Received - PrepareCreate for transaction: " + assyncResult.transactionID);
+        if (assyncResult.success)
+        {
+            if (createQUORUM.ContainsKey(assyncResult.transactionID)) { createQUORUM[assyncResult.transactionID]++; }
+            else { createQUORUM.Add(assyncResult.transactionID, 1); }
+        }
+        return;
+    }
+
+    public static void commitCreateRemoteAsyncCallBack(IAsyncResult ar)
+    {  
+        commitCreateRemoteAsyncDelegate del = (commitCreateRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        TransactionDTO assyncResult = del.EndInvoke(ar);
+        log.Info(assyncResult.clientID + " CREATE ::  Call Back Received - CommitCreate for transaction: " + assyncResult.transactionID);
+        if (assyncResult.success)
+        {
+            if (createQUORUM.ContainsKey(assyncResult.transactionID)) { createQUORUM[assyncResult.transactionID]++; }
+            else { createQUORUM.Add(assyncResult.transactionID, 1); }      
+        }
+        return;
+    }
+
+    // Remote method
+    public void create(string filename, int nbDataServers, int readQuorum, int writeQuorum)
+    {
+        //1. Find out which Meta-Server to Call
+        MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
+        log.Info(this.clientID + " CREATE ::  Meta-Server to contact: " + Utils.whichMetaServer(filename));
+
+        //2. If not available, try next one
+        //TODO
+
+        //3. Get File-Handle
+        log.Info(this.clientID + " CREATE ::  Sending create request to Meta-Server");
+        FileHandler fh = mdi.create(this.clientID, filename, nbDataServers, readQuorum, writeQuorum);
+        if (fh == null)
+        {
+            log.Info(this.clientID + " CREATE :: Meta Server didn't create the file!"); // Change this to know the reason
+            return;
+        }
+        log.Info(this.clientID + " CREATE ::  Received the File Handler");
+        
+
+        //4. Save File-Handle
+        //TODO - Implement a function to do this (also one to remove)
+
+
+        //5. Contact Data-Servers to Prepare
+        log.Info(this.clientID + " CREATE ::  Initiating 2PC");
+        string transactionID = Utils.generateTransactionID(); 
+        //TODO Create TransactionDTO and use it!
+
+        foreach (string dataServerPort in fh.dataServersPorts)
+        {
+            MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
+            prepareCreateRemoteAsyncDelegate RemoteDel = new prepareCreateRemoteAsyncDelegate(di.prepareCreate);
+            AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.prepareCreateRemoteAsyncCallBack);
+            TransactionDTO prepateDTO = new TransactionDTO(transactionID, this.clientID, fh.filenameGlobal);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(prepateDTO, RemoteCallback, null);
+            //di.prepareCreate(this.clientID, filename);
+        }
+        log.Info(this.clientID + " CREATE ::  2PC 1st Phase - Prepare Create Assync Calls Sent");
+        
+        while (true)
+        {
+            lock (createQUORUM)
+            {
+                if (createQUORUM.ContainsKey(transactionID) ) //the fh.writeQuorum is the same as createQuorum
+                {
+                    if (createQUORUM[transactionID] >= fh.writeQuorum)
+                    {
+                        log.Info(this.clientID + " CREATE :: Reached necessary Quorum of: " + fh.writeQuorum + " : number of machines that are prepared: " + createQUORUM[transactionID]);
+                        createQUORUM.Remove(transactionID);
+                        break;
+                    }
+                }
+            }
+        }
+
+        //6. Contact Data-Servers to Commit
+        transactionID = Utils.generateTransactionID(); //Generating new transaction ID for Comming
+        foreach (string dataServerPort in fh.dataServersPorts)
+        {
+            MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
+            commitCreateRemoteAsyncDelegate RemoteDel = new commitCreateRemoteAsyncDelegate(di.commitCreate);
+            AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.commitCreateRemoteAsyncCallBack);
+            TransactionDTO commitDTO = new TransactionDTO(transactionID, this.clientID, filename);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(commitDTO, RemoteCallback, null);
+            //di.commitCreate(this.clientID, filename);
+        }
+        log.Info(this.clientID + " CREATE ::  2PC 2nd Phase - Commit Create Assync Calls Sent");
+        
+        while (true)
+        {
+            lock (createQUORUM)
+            {
+                if (createQUORUM.ContainsKey(transactionID)) //Write Quorum is the same as Create on filehandler
+                {
+                    if (createQUORUM[transactionID] >= fh.writeQuorum)
+                    {
+                        log.Info(this.clientID + " CREATE :: Reached necessary Quorum of: " + fh.writeQuorum + " : number of machines that are prepared to commit: " + createQUORUM[transactionID]);
+                        createQUORUM.Remove(transactionID);
+                        break;
+                    }
+                }
+                   
+            }
+        }
+
+        //7. Tell Meta-Data Server to Confirm Creation 
+        mdi.confirmCreate(this.clientID, filename, true); //TODO need to check if this guy is still up!
+        log.Info(this.clientID + " CREATE :: Confirmation Sent to Meta-Data Server, operation complete");
+        return;
+    }
+
+
+
+
 
 
 
@@ -188,128 +331,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
 
 
-
-
-
-
-    /*------------------------------------------------------------------------         
-     *                                   CREATE
-     *-----------------------------------------------------------------------*/
-
-    // Delegates
-    public delegate TransactionDTO prepareCreateRemoteAsyncDelegate(string transactionID, string clientID, string local_file_name);
-    public delegate TransactionDTO commitCreateRemoteAsyncDelegate(string transactionID, string clientID, string local_file_name);
-
-    // Callbacks
-    public static void prepareCreateRemoteAsyncCallBack(IAsyncResult ar)
-    {
-        prepareCreateRemoteAsyncDelegate del = (prepareCreateRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-        TransactionDTO assyncResult = del.EndInvoke(ar);
-        if (assyncResult.success)
-        {
-            if (writeQUORUM.ContainsKey(assyncResult.transctionID))
-                writeQUORUM[assyncResult.transctionID]++;
-            else
-                writeQUORUM.Add(assyncResult.transctionID, 1);
-        }
-        return;
-    }
-
-    public static void commitCreateRemoteAsyncCallBack(IAsyncResult ar)
-    {
-        commitCreateRemoteAsyncDelegate del = (commitCreateRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-        TransactionDTO assyncResult = del.EndInvoke(ar);
-        if (assyncResult.success)
-        {
-            if (writeQUORUM.ContainsKey(assyncResult.transctionID))
-                writeQUORUM[assyncResult.transctionID]++;
-            else
-                writeQUORUM.Add(assyncResult.transctionID, 1);
-        }
-        return;
-    }
-
-    // Remote method
-    public void create(string filename, int nbDataServers, int readQuorum, int writeQuorum)
-    {
-        //1. Find out which Meta-Server to Call
-        //Console.WriteLine("Discovering the right MetaData Server");
-        MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
-        //Console.WriteLine("Meta-Data Server: " + Utils.whichMetaServer(filename));
-
-
-        //2. If not available, try next one
-        //TODO
-
-        //3. Get File-Handle
-        //Console.WriteLine("Request the File Handle");
-        FileHandler fh = mdi.create(this.clientID, filename, nbDataServers, readQuorum, writeQuorum);
-
-        if (fh == null) {
-            log.Info("[CLIENT  create] Metaserve didn't create the file!");
-            return;
-        }
-        //Console.WriteLine("File Handle Request sucess");
-
-        //4. Save File-Handle
-        //TODO - Implement a function to do this (also one to remove)
-
-
-        //5. Contact Data-Servers to Prepare
-        //log.Info("Launching Prepare to Commit")
-
-        string transactionID;
-        transactionID = Utils.generateTransactionID();
-
-        foreach (string dataServerPort in fh.dataServersPorts)
-        {
-            MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            prepareCreateRemoteAsyncDelegate RemoteDel = new prepareCreateRemoteAsyncDelegate(di.prepareCreate);
-            AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.prepareCreateRemoteAsyncCallBack);
-            IAsyncResult RemAr = RemoteDel.BeginInvoke(transactionID,this.clientID,filename,RemoteCallback, null);
-            //di.prepareCreate(this.clientID, filename);
-        }
-
-        while (true) {
-            lock (writeQUORUM)
-            {
-                if (writeQUORUM.ContainsKey(transactionID) && writeQUORUM[transactionID] >= fh.writeQuorum)
-                {
-                    writeQUORUM.Remove(transactionID);
-                    Console.WriteLine("[CLIENT  create] QuorunWriter tem coisas");
-                    break;
-                }
-            }
-        }
-
-        //6. Contact Data-Servers to Commit
-        //log.Info("Going to start commit");
-
-        transactionID = Utils.generateTransactionID();
-
-        foreach (string dataServerPort in fh.dataServersPorts){
-            MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            commitCreateRemoteAsyncDelegate RemoteDel = new commitCreateRemoteAsyncDelegate(di.commitCreate);
-            AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.commitCreateRemoteAsyncCallBack);
-            IAsyncResult RemAr = RemoteDel.BeginInvoke(transactionID, this.clientID, filename, RemoteCallback, null);
-            //di.commitCreate(this.clientID, filename);
-        }
-        //log.Info("Commit with Data Servers done");
-
-        while (true){
-            lock (writeQUORUM)
-            {
-                if (writeQUORUM.ContainsKey(transactionID) && writeQUORUM[transactionID] >= fh.writeQuorum)
-                    break;
-            }
-        }
-
-        //7. Tell Meta-Data Server to Confirm Creation 
-        mdi.confirmCreate(this.clientID, filename, true);
-
-        log.Info("[CLIENT  create] Success!");
-        return;
-    }
 
 
 
@@ -471,9 +492,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     }
 
     /* To be used for reference of byteArrayRegister */
-    public void write(int reg, int byteArrayRegister)
+    public void write(int reg, int byteArrayRegisterIndex)
     {
-        write(reg, byteArrayRegister[byteArrayRegister]);
+        write(reg, byteArrayRegister[byteArrayRegisterIndex]);
     }
 
 
@@ -487,7 +508,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
      *                                   READ
      *-----------------------------------------------------------------------*/
 
-    private static Dictionary<string, int> quorunReader; //String - Transaction ID ; int - Counter 
+    private static Dictionary<string, int> readQuorum; //String - Transaction ID ; int - Counter //TODO mudar para o Value ser um array de ints da dimensão nbservers, com as várias versões
 
 
     public void read(int reg, int semantics, int byteArray) {
