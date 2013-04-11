@@ -44,19 +44,23 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FileHandler.cs" />
+    <Compile Include="others\FileHandler.cs" />
+    <Compile Include="others\TransactionDTO.cs" />
     <Compile Include="remoteClient.cs" />
     <Compile Include="remoteDataServer.cs" />
     <Compile Include="remoteMetaDataServer.cs" />
     <Compile Include="remoteExceptions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Utils.cs" />
+    <Compile Include="others\Utils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="libs\Log4Net.config" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="libs\log4net.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="dto\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

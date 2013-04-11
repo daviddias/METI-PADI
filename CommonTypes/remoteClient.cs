@@ -11,10 +11,7 @@ using System.Net.Sockets;
 using log4net;
 
 
-
-
 public interface remoteClientInterface { 
-
     //usado pelo puppet-master
     void open(string filename);                                                          //DONE
     void close(string filename);                                                        //DONE
@@ -23,118 +20,29 @@ public interface remoteClientInterface {
     void write(int reg, byte[] byteArray);                                              //DONE
     void write(int reg, int byteArray);                                                 //DONE
     void read(int reg, int semantics, int byteArray);                                    //DONE
-
-    //testing communication
-    string metodoOla();
-
+    string metodoOla(); //testing communication
 }
-
 
 
 public class remoteClient : MarshalByRefObject, remoteClientInterface
 {
-
+    private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+    
     public const int MAX_FILES_OPENED = 10;
 
     public string[] metaServerPort = new string[6];
-    public string MS0_Address;
-    public string MS1_Address;
-    public string MS2_Address;
-
-    public const string DS0_Address = "localhost:7081/MyRemoteDataObjectName";
-
+    // Read Modes
     public const int DEFAULT = 1;
     public const int MONOTONIC = 2;
 
-
-    //Atributos
+    // Atributes
     public string clientID;
-    private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         
+    // File-Register and Byte-Array Register
+    public static List<FileHandler> register;                   
+    public static List<byte[]> byteArrayRegister = new List<byte[]>(10);
 
-    // Register where the filehandlers are saved in Client
-    public static List<FileHandler> register;
-
-    // Register where the byte-arrays are saved in Client
-    List<byte[]> bytes = new List<byte[]>(10);
-
-    // Quorun processing dictionaries
-    private static Dictionary<string, int> quorunReader;
-    private static Dictionary<string, int> quorunWriter;
-
-    //Asynchronous calls delegates
-    public delegate TwoPCAssynchReturn prepareCreateRemoteAsyncDelegate(string transactionID, string clientID, string local_file_name);
-    public delegate TwoPCAssynchReturn prepareWriteRemoteAsyncDelegate(string clientID, string local_file_name, byte[] byte_array);
-    public delegate TwoPCAssynchReturn prepareDeleteRemoteAsyncDelegate(string clientID, string local_file_name);
-
-    public delegate TwoPCAssynchReturn commitCreateRemoteAsyncDelegate(string transactionID, string clientID, string local_file_name);
-    public delegate TwoPCAssynchReturn commitWriteRemoteAsyncDelegate(string clientID, string local_file_name);
-    public delegate TwoPCAssynchReturn commitDeleteRemoteAsyncDelegate(string clientID, string local_file_name);
-
-    //Callbacks
-    public static void prepareCreateRemoteAsyncCallBack(IAsyncResult ar)
-    {
-        prepareCreateRemoteAsyncDelegate del = (prepareCreateRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-        TwoPCAssynchReturn assyncResult = del.EndInvoke(ar);
-        if (assyncResult.success){
-            if (quorunWriter.ContainsKey(assyncResult.transctionID))
-                quorunWriter[assyncResult.transctionID]++;
-            else
-                quorunWriter.Add(assyncResult.transctionID, 1);
-        }
-        return;
-    }
-
-    public static void prepareWriteRemoteAsyncCallBack(IAsyncResult ar)
-    {
-        // Alternative 2: Use the callback to get the return value
-        prepareWriteRemoteAsyncDelegate del = (prepareWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
-
-        return;
-    }
-
-    public static void prepareDeleteRemoteAsyncCallBack(IAsyncResult ar)
-    {
-        // Alternative 2: Use the callback to get the return value
-        prepareDeleteRemoteAsyncDelegate del = (prepareDeleteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
-
-        return;
-    }
-
-    public static void commitCreateRemoteAsyncCallBack(IAsyncResult ar)
-    {
-        commitCreateRemoteAsyncDelegate del = (commitCreateRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-        TwoPCAssynchReturn assyncResult = del.EndInvoke(ar);
-        if (assyncResult.success)
-        {
-            if (quorunWriter.ContainsKey(assyncResult.transctionID))
-                quorunWriter[assyncResult.transctionID]++;
-            else
-                quorunWriter.Add(assyncResult.transctionID, 1);
-        }
-        return;
-    }
-
-    public static void commitWriteRemoteAsyncCallBack(IAsyncResult ar)
-    {
-        // Alternative 2: Use the callback to get the return value
-        commitWriteRemoteAsyncDelegate del = (commitWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
-
-        return;
-    }
-
-    public static void commitDeleteRemoteAsyncCallBack(IAsyncResult ar)
-    {
-        // Alternative 2: Use the callback to get the return value
-        commitWriteRemoteAsyncDelegate del = (commitWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
-
-        return;
-    }
-
+   
     //Construtor
     public remoteClient(string ID, string[] metaServerPorts)
     {
@@ -146,19 +54,17 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         this.metaServerPort[4] = metaServerPorts[2];
         this.metaServerPort[5] = metaServerPorts[2];
 
-        bytes = new List<byte[]>(10);
+        byteArrayRegister = new List<byte[]>(10);
         register = new List<FileHandler>(10);
 
         quorunReader = new Dictionary<string, int>();
-        quorunWriter = new Dictionary<string,int>();
+        writeQUORUM = new Dictionary<string,int>();
 
         System.Console.WriteLine("Client: - " + clientID + " -  is up!");
     }
 
-    public override object InitializeLifetimeService()
-    {
-        return null;
-    }
+    /* Live forever */
+    public override object InitializeLifetimeService() { return null; }
 
     /* communication testing */
     public string metodoOla()
@@ -170,7 +76,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     private Boolean isOpen(string filename)
     {
         foreach (FileHandler fh in register)
-            if (fh.fileName == filename)
+            if (fh.filenameGlobal == filename)
                 return true;
         return false;
     }
@@ -179,14 +85,34 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     private FileHandler getFileHandler(string filename)
     {
         foreach (FileHandler fh in register)
-            if (fh.fileName == filename)
+            if (fh.filenameGlobal == filename)
                 return fh;
         return null;
     }
 
+
+
+
+
+
+
+
+
+
     /************************************************************************
-     *              Invoked Methods by Pupper Master
+     *          
+     *                 Invoked Methods by Pupper Master
+     *              
      ************************************************************************/
+
+
+
+
+
+    /*------------------------------------------------------------------------         
+     *                                   OPEN
+     *-----------------------------------------------------------------------*/
+    
     public void open(string filename)
     {
 
@@ -221,12 +147,22 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         return;
     }
 
+
+
+
+
+
+
+    /*------------------------------------------------------------------------         
+     *                                   CLOSE
+     *-----------------------------------------------------------------------*/
+
     public void close(string filename)
     {
         FileHandler filehandler = null;
         //1. Check if file is really open
         foreach (FileHandler fh in register){
-            if (fh.fileName == filename){
+            if (fh.filenameGlobal == filename){
                 filehandler = fh;
                 break;
             }
@@ -250,6 +186,50 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         return;
     }
 
+
+
+
+
+
+
+    /*------------------------------------------------------------------------         
+     *                                   CREATE
+     *-----------------------------------------------------------------------*/
+
+    // Delegates
+    public delegate TransactionDTO prepareCreateRemoteAsyncDelegate(string transactionID, string clientID, string local_file_name);
+    public delegate TransactionDTO commitCreateRemoteAsyncDelegate(string transactionID, string clientID, string local_file_name);
+
+    // Callbacks
+    public static void prepareCreateRemoteAsyncCallBack(IAsyncResult ar)
+    {
+        prepareCreateRemoteAsyncDelegate del = (prepareCreateRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        TransactionDTO assyncResult = del.EndInvoke(ar);
+        if (assyncResult.success)
+        {
+            if (writeQUORUM.ContainsKey(assyncResult.transctionID))
+                writeQUORUM[assyncResult.transctionID]++;
+            else
+                writeQUORUM.Add(assyncResult.transctionID, 1);
+        }
+        return;
+    }
+
+    public static void commitCreateRemoteAsyncCallBack(IAsyncResult ar)
+    {
+        commitCreateRemoteAsyncDelegate del = (commitCreateRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        TransactionDTO assyncResult = del.EndInvoke(ar);
+        if (assyncResult.success)
+        {
+            if (writeQUORUM.ContainsKey(assyncResult.transctionID))
+                writeQUORUM[assyncResult.transctionID]++;
+            else
+                writeQUORUM.Add(assyncResult.transctionID, 1);
+        }
+        return;
+    }
+
+    // Remote method
     public void create(string filename, int nbDataServers, int readQuorum, int writeQuorum)
     {
         //1. Find out which Meta-Server to Call
@@ -291,11 +271,11 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
 
         while (true) {
-            lock (quorunWriter)
+            lock (writeQUORUM)
             {
-                if (quorunWriter.ContainsKey(transactionID) && quorunWriter[transactionID] >= fh.writeQuorum)
+                if (writeQUORUM.ContainsKey(transactionID) && writeQUORUM[transactionID] >= fh.writeQuorum)
                 {
-                    quorunWriter.Remove(transactionID);
+                    writeQUORUM.Remove(transactionID);
                     Console.WriteLine("[CLIENT  create] QuorunWriter tem coisas");
                     break;
                 }
@@ -317,9 +297,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         //log.Info("Commit with Data Servers done");
 
         while (true){
-            lock (quorunWriter)
+            lock (writeQUORUM)
             {
-                if (quorunWriter.ContainsKey(transactionID) && quorunWriter[transactionID] >= fh.writeQuorum)
+                if (writeQUORUM.ContainsKey(transactionID) && writeQUORUM[transactionID] >= fh.writeQuorum)
                     break;
             }
         }
@@ -328,6 +308,36 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         mdi.confirmCreate(this.clientID, filename, true);
 
         log.Info("[CLIENT  create] Success!");
+        return;
+    }
+
+
+
+
+
+
+    /*------------------------------------------------------------------------         
+     *                                   DELETE
+     *-----------------------------------------------------------------------*/
+
+    //Asynchronous calls delegates
+    public delegate TransactionDTO prepareDeleteRemoteAsyncDelegate(string clientID, string local_file_name);
+    public delegate TransactionDTO commitDeleteRemoteAsyncDelegate(string clientID, string local_file_name);
+
+    public static void prepareDeleteRemoteAsyncCallBack(IAsyncResult ar)
+    {
+        // Alternative 2: Use the callback to get the return value
+        prepareDeleteRemoteAsyncDelegate del = (prepareDeleteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
+
+        return;
+    }
+
+    public static void commitDeleteRemoteAsyncCallBack(IAsyncResult ar)
+    {
+        // Alternative 2: Use the callback to get the return value
+        commitWriteRemoteAsyncDelegate del = (commitWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
         return;
     }
 
@@ -352,7 +362,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.prepareDelete(this.clientID, fh.fileName);
+            di.prepareDelete(this.clientID, fh.filenameGlobal);
         }
 
         //5. Contact data-servers to commit
@@ -360,7 +370,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         {
 
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.commitDelete(this.clientID, fh.fileName);
+            di.commitDelete(this.clientID, fh.filenameGlobal);
         }
 
         //6. Tell metaserver to confirm deletion
@@ -371,12 +381,49 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
     }
 
+
+
+
+
+
+    /*------------------------------------------------------------------------         
+     *                                   WRITE
+     *-----------------------------------------------------------------------*/
+
+    // Quorun processing dictionaries
+    private static Dictionary<string, int> writeQUORUM;  //Key - Transaction ID ; int - number of responses
+
+    // Delegates
+    public delegate TransactionDTO prepareWriteRemoteAsyncDelegate(string clientID, string local_file_name, byte[] byte_array);
+    public delegate TransactionDTO commitWriteRemoteAsyncDelegate(string clientID, string local_file_name);
+
+
+    // Callbacks
+    public static void prepareWriteRemoteAsyncCallBack(IAsyncResult ar)
+    {
+        // Alternative 2: Use the callback to get the return value
+        prepareWriteRemoteAsyncDelegate del = (prepareWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
+
+        return;
+    }
+
+    public static void commitWriteRemoteAsyncCallBack(IAsyncResult ar)
+    {
+        // Alternative 2: Use the callback to get the return value
+        commitWriteRemoteAsyncDelegate del = (commitWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
+
+        return;
+    }
+
+    // Remote Methods
     public void write(int reg, Byte[] byteArray)
     {
         FileHandler fh = null;
 
         //1.Find if this client has this file opened
-        if (register.Count == 0 || !isOpen(register[reg].fileName))
+        if (register.Count == 0 || !isOpen(register[reg].filenameGlobal))
         {
             Console.WriteLine("[CLIENT  write]:  File is not yet opened!");
             return;
@@ -387,7 +434,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         fh = register[reg];
 
         //2. Find out which Meta-Server to Call
-        MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(fh.fileName)]);
+        MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(fh.filenameGlobal)]);
 
 
         //3. If not available, try next one
@@ -404,7 +451,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.prepareWrite(this.clientID, fh.fileName, byteArray);
+            di.prepareWrite(this.clientID, fh.filenameGlobal, byteArray);
         }
 
         //6. Contact Data-Servers to Commit
@@ -412,7 +459,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         {
 
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.commitWrite(this.clientID, fh.fileName);
+            di.commitWrite(this.clientID, fh.filenameGlobal);
         }
 
 
@@ -423,17 +470,32 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         return;
     }
 
-    public void write(int reg, int byteArray)
+    /* To be used for reference of byteArrayRegister */
+    public void write(int reg, int byteArrayRegister)
     {
-        write(reg, bytes[byteArray]);
+        write(reg, byteArrayRegister[byteArrayRegister]);
     }
+
+
+
+
+
+
+
+
+    /*------------------------------------------------------------------------         
+     *                                   READ
+     *-----------------------------------------------------------------------*/
+
+    private static Dictionary<string, int> quorunReader; //String - Transaction ID ; int - Counter 
+
 
     public void read(int reg, int semantics, int byteArray) {
         //Console.WriteLine("[CLIENT  read]:  Chamou o read!");
         byte[] content;
         
         //1.Find if this client has this file opened
-        if (register.Count == 0 || !isOpen(register[reg].fileName))
+        if (register.Count == 0 || !isOpen(register[reg].filenameGlobal))
         {
             Console.WriteLine("[CLIENT  read]:  File is not yet opened!");
             return;
@@ -446,12 +508,12 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            content = di.read(fh.fileName, semantics);
+            content = di.read(fh.filenameGlobal, semantics);
 
             if (content != null)
             {
                 Console.WriteLine("[CLIENT  read]:  Success! " + System.Text.Encoding.Default.GetString(content));
-                bytes.Insert(byteArray, content);
+                byteArrayRegister.Insert(byteArray, content);
                 return;
             }
         }
