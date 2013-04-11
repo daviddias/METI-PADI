@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 [Serializable]
 public class TransactionDTO
 {
-    public string transctionID;
+    public string transactionID;
     public string clientID;
     public string filenameGlobal;
     public string filenameGenerated;
@@ -18,12 +18,11 @@ public class TransactionDTO
 
     public Boolean success;
 
-    public TransactionDTO(string tid, string cid, string fn, Boolean scc)
+    public TransactionDTO(string transactionID, string clientID, string filenameGlobal)
     {
-        transctionID = tid;
-        clientID = cid;
-        filenameGlobal = fn;
-        success = scc;
+        this.transactionID = transactionID;
+        this.clientID = clientID;
+        this.filenameGlobal = filenameGlobal;
     }
 }
 
