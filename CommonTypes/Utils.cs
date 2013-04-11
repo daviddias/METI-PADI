@@ -59,6 +59,23 @@ public static class Utils
         return obj;
     }
 
+    /************************************************************************
+     *              Generate Local Name on Data Servers 
+     ************************************************************************/
+    public static string genLocalName(string metadataserverName)
+    {
+        char[] name = new char[16]; // Local names are 16 characters ASCII strings
+        Random random = new Random((int)DateTime.Now.Ticks);
 
+        for (int i = 0; i < 16; i++)
+        {
+            if (i < 3)
+                name[i] = metadataserverName[i];
+            else
+                name[i] = (char)random.Next(32, 126); // the printable ASCII characters are numbered between 32 and 126
+        }
+
+        return new string(name);
+    }
 }
 
