@@ -22,7 +22,17 @@ public static class Utils
     }
 
 
+    public static string generateTransactionID() {
+        var bytes = new byte[16];
+        using (var rng = new RNGCryptoServiceProvider())
+        {
+            rng.GetBytes(bytes);
+        }
 
+        // and if you need it as a string...
+        return BitConverter.ToString(bytes);
+
+    }
 
 
     /************************************************************************

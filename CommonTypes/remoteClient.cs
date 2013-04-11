@@ -4,8 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.Remoting;
+using System.Runtime.Remoting.Messaging;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
+using System.Net.Sockets;
 using log4net;
 
 
@@ -56,6 +58,83 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     // Register where the byte-arrays are saved in Client
     List<byte[]> bytes = new List<byte[]>(10);
 
+    // Quorun processing dictionaries
+    private static Dictionary<string, int> quorunReader;
+    private static Dictionary<string, int> quorunWriter;
+
+    //Asynchronous calls delegates
+    public delegate TwoPCAssynchReturn prepareCreateRemoteAsyncDelegate(string transactionID, string clientID, string local_file_name);
+    public delegate TwoPCAssynchReturn prepareWriteRemoteAsyncDelegate(string clientID, string local_file_name, byte[] byte_array);
+    public delegate TwoPCAssynchReturn prepareDeleteRemoteAsyncDelegate(string clientID, string local_file_name);
+
+    public delegate TwoPCAssynchReturn commitCreateRemoteAsyncDelegate(string transactionID, string clientID, string local_file_name);
+    public delegate TwoPCAssynchReturn commitWriteRemoteAsyncDelegate(string clientID, string local_file_name);
+    public delegate TwoPCAssynchReturn commitDeleteRemoteAsyncDelegate(string clientID, string local_file_name);
+
+    //Callbacks
+    public static void prepareCreateRemoteAsyncCallBack(IAsyncResult ar)
+    {
+        prepareCreateRemoteAsyncDelegate del = (prepareCreateRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        TwoPCAssynchReturn assyncResult = del.EndInvoke(ar);
+        if (assyncResult.success){
+            if (quorunWriter.ContainsKey(assyncResult.transctionID))
+                quorunWriter[assyncResult.transctionID]++;
+            else
+                quorunWriter.Add(assyncResult.transctionID, 1);
+        }
+        return;
+    }
+
+    public static void prepareWriteRemoteAsyncCallBack(IAsyncResult ar)
+    {
+        // Alternative 2: Use the callback to get the return value
+        prepareWriteRemoteAsyncDelegate del = (prepareWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
+
+        return;
+    }
+
+    public static void prepareDeleteRemoteAsyncCallBack(IAsyncResult ar)
+    {
+        // Alternative 2: Use the callback to get the return value
+        prepareDeleteRemoteAsyncDelegate del = (prepareDeleteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
+
+        return;
+    }
+
+    public static void commitCreateRemoteAsyncCallBack(IAsyncResult ar)
+    {
+        commitCreateRemoteAsyncDelegate del = (commitCreateRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        TwoPCAssynchReturn assyncResult = del.EndInvoke(ar);
+        if (assyncResult.success)
+        {
+            if (quorunWriter.ContainsKey(assyncResult.transctionID))
+                quorunWriter[assyncResult.transctionID]++;
+            else
+                quorunWriter.Add(assyncResult.transctionID, 1);
+        }
+        return;
+    }
+
+    public static void commitWriteRemoteAsyncCallBack(IAsyncResult ar)
+    {
+        // Alternative 2: Use the callback to get the return value
+        commitWriteRemoteAsyncDelegate del = (commitWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
+
+        return;
+    }
+
+    public static void commitDeleteRemoteAsyncCallBack(IAsyncResult ar)
+    {
+        // Alternative 2: Use the callback to get the return value
+        commitWriteRemoteAsyncDelegate del = (commitWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
+
+        return;
+    }
+
     //Construtor
     public remoteClient(string ID, string[] metaServerPorts)
     {
@@ -69,6 +148,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         bytes = new List<byte[]>(10);
         register = new List<FileHandler>(10);
+
+        quorunReader = new Dictionary<string, int>();
+        quorunWriter = new Dictionary<string,int>();
 
         System.Console.WriteLine("Client: - " + clientID + " -  is up!");
     }
@@ -87,12 +169,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     /* File is open */
     private Boolean isOpen(string filename)
     {
-        Console.WriteLine("[CLIENT isOpened] Count:" + register.Count);
-            
-        {
-            System.Console.WriteLine("[CLIENT isOpened] No open files in this client!");
-            return false;
-        }
         foreach (FileHandler fh in register)
             if (fh.fileName == filename)
                 return true;
@@ -130,9 +206,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
 
         //3. Contact MetaServers to open
-        MyRemoteMetaDataInterface meta_obj = null;
-        int whichMetaServer = Utils.whichMetaServer(filename);
-        meta_obj = Utils.getRemoteMetaDataObj(metaServerPort[whichMetaServer]);
+        MyRemoteMetaDataInterface meta_obj = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
         filehandler = meta_obj.open(clientID, filename);
 
         if (filehandler == null){
@@ -190,6 +264,11 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         //3. Get File-Handle
         //Console.WriteLine("Request the File Handle");
         FileHandler fh = mdi.create(this.clientID, filename, nbDataServers, readQuorum, writeQuorum);
+
+        if (fh == null) {
+            log.Info("[CLIENT  create] Metaserve didn't create the file!");
+            return;
+        }
         //Console.WriteLine("File Handle Request sucess");
 
         //4. Save File-Handle
@@ -197,27 +276,53 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
 
         //5. Contact Data-Servers to Prepare
-        //log.Info("Launching Prepare to Commit");
+        //log.Info("Launching Prepare to Commit")
+
+        string transactionID;
+        transactionID = Utils.generateTransactionID();
+
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.prepareCreate(this.clientID, filename);
+            prepareCreateRemoteAsyncDelegate RemoteDel = new prepareCreateRemoteAsyncDelegate(di.prepareCreate);
+            AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.prepareCreateRemoteAsyncCallBack);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(transactionID,this.clientID,filename,RemoteCallback, null);
+            //di.prepareCreate(this.clientID, filename);
         }
-        //log.Info("Launched Prepare to Commit");
 
+        while (true) {
+            lock (quorunWriter)
+            {
+                if (quorunWriter.ContainsKey(transactionID) && quorunWriter[transactionID] >= fh.writeQuorum)
+                {
+                    quorunWriter.Remove(transactionID);
+                    Console.WriteLine("[CLIENT  create] QuorunWriter tem coisas");
+                    break;
+                }
+            }
+        }
 
         //6. Contact Data-Servers to Commit
         //log.Info("Going to start commit");
-        foreach (string dataServerPort in fh.dataServersPorts)
-        {
-            //log.Info("ENTREI NO LOOP DE COMMIT");
+
+        transactionID = Utils.generateTransactionID();
+
+        foreach (string dataServerPort in fh.dataServersPorts){
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            //log.Info("VOU INVOCAR O COMMIT CREATE : ATRIBUTOS :  " + this.clientID + "   " + filename);
-            
-            di.commitCreate(this.clientID, filename);
-            
+            commitCreateRemoteAsyncDelegate RemoteDel = new commitCreateRemoteAsyncDelegate(di.commitCreate);
+            AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.commitCreateRemoteAsyncCallBack);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(transactionID, this.clientID, filename, RemoteCallback, null);
+            //di.commitCreate(this.clientID, filename);
         }
         //log.Info("Commit with Data Servers done");
+
+        while (true){
+            lock (quorunWriter)
+            {
+                if (quorunWriter.ContainsKey(transactionID) && quorunWriter[transactionID] >= fh.writeQuorum)
+                    break;
+            }
+        }
 
         //7. Tell Meta-Data Server to Confirm Creation 
         mdi.confirmCreate(this.clientID, filename, true);
