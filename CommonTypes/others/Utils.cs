@@ -64,18 +64,36 @@ public static class Utils
     ************************************************************************/
     public static string genLocalName(string metadataserverName)
     {
-        char[] name = new char[16]; // Local names are 16 characters ASCII strings
+        //char[] name = new char[16]; // Local names are 16 characters ASCII strings
         Random random = new Random((int)DateTime.Now.Ticks);
 
-        for (int i = 0; i < 16; i++)
-        {
-            if (i < 3)
-                name[i] = metadataserverName[i];
-            else
-                name[i] = (char)random.Next(32, 126); // the printable ASCII characters are numbered between 32 and 126
-        }
+        //char[] invalidChar = System.IO.Path.GetInvalidPathChars();
 
-        return new string(name);
+
+        //for (int i = 0; i < 16; i++)
+        //{
+        //    if (i < 3)
+        //        name[i] = metadataserverName[i];
+        //    else
+        //    {
+        //        char c = (char)random.Next(32, 126); // the printable ASCII characters are numbered between 32 and 126
+
+        //        while(Array.Exists(invalidChar, element => element == c))
+        //            c = (char)random.Next(32, 126);
+        //        name[i] = c;
+                
+        //    }
+        //}
+
+        string s = metadataserverName;
+        s += (char)random.Next(60, 90);
+        s += (char)random.Next(60, 90);
+        s += (char)random.Next(60, 90);
+        s += (char)random.Next(60, 90);
+        s += (char)random.Next(60, 90);
+
+
+        return s;
     }
 }
 

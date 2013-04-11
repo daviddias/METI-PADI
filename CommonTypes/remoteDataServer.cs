@@ -209,7 +209,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
 
     public TransactionDTO prepareCreate(TransactionDTO dto) {
-        TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameGlobal);
+        TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameForDataServer);
 
         if (isfailed == true)
         {
@@ -227,7 +227,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         }
 
         //Verifica a existencia do ficheiro
-        if (File.Exists(dto.filenameGlobal))
+        if (File.Exists(dto.filenameForDataServer))
         {
             log.Info("CREATE :: PrepareCreate : The file requested to create already exists");
             newDTO.success = false;
@@ -235,14 +235,14 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         }
 
         //Verifica se o ficheiro ja esta a ser alterado
-        if (mutationList.Find(f => f.filename == dto.filenameGlobal) != null)
+        if (mutationList.Find(f => f.filename == dto.filenameForDataServer) != null)
         {
             log.Info("CREATE :: PrepareCreate : The file requested to create is already being manipulated by other process");
             newDTO.success = false;
             return newDTO;
         }
 
-        MutationListItem mutationEntry = new MutationListItem(dto.filenameGlobal, dto.clientID, null);
+        MutationListItem mutationEntry = new MutationListItem(dto.filenameForDataServer, dto.clientID, null);
         mutationList.Add(mutationEntry);
 
         log.Info("CREATE :: PrepareCreate : Operation Complete");
@@ -252,7 +252,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
     public TransactionDTO commitCreate(TransactionDTO dto)
     {
-        TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameGlobal);
+        TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameForDataServer);
 
      
         if (isfailed == true){
@@ -268,7 +268,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             Monitor.Exit(mutationList);
         }
 
-        MutationListItem item = mutationList.Find(i => i.filename == dto.filenameGlobal && i.clientID == dto.clientID);
+        MutationListItem item = mutationList.Find(i => i.filename == dto.filenameForDataServer && i.clientID == dto.clientID);
         if (item == null){
             log.Info("CREATE :: CommitCreate : There was no request before for 'Prepare' can't fast forward");          
             newDTO.success = false;
@@ -276,9 +276,9 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         }
 
         mutationList.Remove(item);
-        File.Create(dto.filenameGlobal).Close();
+        File.Create(dto.filenameForDataServer).Close();
 
-        log.Info("CREATE :: CommitCreate : Operation complete by Client: " + dto.clientID + " for file: " + dto.filenameGlobal);
+        log.Info("CREATE :: CommitCreate : Operation complete by Client: " + dto.clientID + " for file: " + dto.filenameForDataServer);
         newDTO.success = true;
         return newDTO;
     }

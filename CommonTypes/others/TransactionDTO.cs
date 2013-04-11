@@ -11,18 +11,18 @@ public class TransactionDTO
     public string transactionID;
     public string clientID;
     public string filenameGlobal;
-    public string filenameGenerated;
+    public string filenameForDataServer;
     public long filesize;
     public byte[] filecontent;
     public long version;
 
     public Boolean success;
 
-    public TransactionDTO(string transactionID, string clientID, string filenameGlobal)
+    public TransactionDTO(string transactionID, string clientID, string filenameForDataServer)
     {
         this.transactionID = transactionID;
         this.clientID = clientID;
-        this.filenameGlobal = filenameGlobal;
+        this.filenameForDataServer = filenameForDataServer;
     }
 }
 

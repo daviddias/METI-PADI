@@ -186,14 +186,18 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
             prepareCreateRemoteAsyncDelegate RemoteDel = new prepareCreateRemoteAsyncDelegate(di.prepareCreate);
             AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.prepareCreateRemoteAsyncCallBack);
-            TransactionDTO prepateDTO = new TransactionDTO(transactionID, this.clientID, fh.filenameGlobal);
+            TransactionDTO prepateDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);
             IAsyncResult RemAr = RemoteDel.BeginInvoke(prepateDTO, RemoteCallback, null);
             //di.prepareCreate(this.clientID, filename);
         }
         log.Info(this.clientID + " CREATE ::  2PC 1st Phase - Prepare Create Assync Calls Sent");
-        
+
+
+
         while (true)
         {
+            System.Threading.Thread.Sleep(1); // Wair 1ms to avoid that the second server receive a commit before a prepare
+
             lock (createQUORUM)
             {
                 if (createQUORUM.ContainsKey(transactionID) ) //the fh.writeQuorum is the same as createQuorum
@@ -215,14 +219,18 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
             commitCreateRemoteAsyncDelegate RemoteDel = new commitCreateRemoteAsyncDelegate(di.commitCreate);
             AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.commitCreateRemoteAsyncCallBack);
-            TransactionDTO commitDTO = new TransactionDTO(transactionID, this.clientID, filename);
+            TransactionDTO commitDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);
             IAsyncResult RemAr = RemoteDel.BeginInvoke(commitDTO, RemoteCallback, null);
             //di.commitCreate(this.clientID, filename);
         }
         log.Info(this.clientID + " CREATE ::  2PC 2nd Phase - Commit Create Assync Calls Sent");
-        
+
+
+
         while (true)
         {
+            System.Threading.Thread.Sleep(1); // Wair 1ms to avoid that the second server receive a commit before a prepare
+
             lock (createQUORUM)
             {
                 if (createQUORUM.ContainsKey(transactionID)) //Write Quorum is the same as Create on filehandler
@@ -383,7 +391,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.prepareDelete(this.clientID, fh.filenameGlobal);
+            di.prepareDelete(this.clientID, fh.dataServersFiles[dataServerPort]);
         }
 
         //5. Contact data-servers to commit
@@ -391,7 +399,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         {
 
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.commitDelete(this.clientID, fh.filenameGlobal);
+            di.commitDelete(this.clientID, fh.dataServersFiles[dataServerPort]);
         }
 
         //6. Tell metaserver to confirm deletion
@@ -472,7 +480,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.prepareWrite(this.clientID, fh.filenameGlobal, byteArray);
+            di.prepareWrite(this.clientID, fh.dataServersFiles[dataServerPort], byteArray);
         }
 
         //6. Contact Data-Servers to Commit
@@ -480,7 +488,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         {
 
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.commitWrite(this.clientID, fh.filenameGlobal);
+            di.commitWrite(this.clientID, fh.dataServersFiles[dataServerPort]);
         }
 
 
@@ -529,7 +537,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            content = di.read(fh.filenameGlobal, semantics);
+            content = di.read(fh.dataServersFiles[dataServerPort], semantics);
 
             if (content != null)
             {

@@ -10,7 +10,6 @@ public class FileHandler
 {
     /* Atributes */
     public String filenameGlobal;
-    public String filenameGenerated;
     public long fileSize;
     public int nbServers;
     public String[] dataServersPorts;
