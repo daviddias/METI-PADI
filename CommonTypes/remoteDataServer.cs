@@ -15,7 +15,7 @@ public interface MyRemoteDataInterface
     //usado pelo cliente
     TransactionDTO prepareWrite(TransactionDTO dto);                                    //DONE
     TransactionDTO commitWrite(TransactionDTO dto);                                     //DONE
-    byte[] read(string local_file_name, int semantic);                                  //SEMI-DONE (ignora a semantica)
+    TransactionDTO read(TransactionDTO dto);                                  //SEMI-DONE (ignora a semantica)
     TransactionDTO prepareCreate(TransactionDTO dto);                                   //DONE
     TransactionDTO commitCreate(TransactionDTO dto);                                    //DONE
     TransactionDTO prepareDelete(TransactionDTO dto);                                   //DONE
@@ -176,16 +176,17 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
 
 
-    public byte[] read(string local_file_name, int semantic)
+    public TransactionDTO  read(TransactionDTO dto)
     {
-
+        TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameForDataServer);
         // this method is limited to 2^32 byte files (4.2 GB)
-        byte[] bytes = null;
+        byte[] bytesRead = null;
 
         if (isfailed == true)
         {
             Console.WriteLine("[DATA_SERVER: read]    The server has failed!");
-            return bytes;
+            newDTO.success = false;
+            return newDTO;
         }
 
         if (isfrozen == true)
@@ -199,13 +200,15 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         FileStream fs;
 
-        fs = File.OpenRead(local_file_name);
-        bytes = new byte[fs.Length];
-        fs.Read(bytes, 0, Convert.ToInt32(fs.Length));
+        fs = File.OpenRead(dto.filenameForDataServer);
+        bytesRead = new byte[fs.Length];
+        fs.Read(bytesRead, 0, Convert.ToInt32(fs.Length));
         fs.Close();
 
-        Console.WriteLine("[DATA_SERVER: read]    Success!");
-        return bytes;
+        Console.WriteLine("[DATA_SERVER: read]    Success! : Content Read- " +  System.Text.Encoding.Default.GetString(bytesRead));
+        newDTO.success = true;
+        newDTO.filecontent = bytesRead;
+        return newDTO;
     }
 
 
