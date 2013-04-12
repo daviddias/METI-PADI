@@ -4,10 +4,42 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
-
+using log4net;
 
 public static class Utils
 {
+
+    private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+    
+
+    /************************************************************************
+     *              Get Remote Reference to Meta Data Server 
+     *              that is responsible(with failover)
+     ************************************************************************/
+
+    public static MyRemoteMetaDataInterface getMetaDataRemoteInterface(string filename, string[] metaServerPorts)
+    {
+        int metaServerToContact = Utils.whichMetaServer(filename);
+        MyRemoteMetaDataInterface mdi;
+        while (true)
+        {
+            mdi = Utils.getRemoteMetaDataObj(metaServerPorts[metaServerToContact]);
+            try 
+            { 
+                mdi.alive();
+                break; //this one is alive
+            }
+            catch
+            {
+                metaServerToContact = metaServerToContact + 2;
+                if (metaServerToContact > 5) { metaServerToContact = 0; }
+                continue;
+            }
+        }
+        log.Info("UTILS ::  Meta-Server to contact: " + Utils.whichMetaServer(filename) + " for filename: " + filename);
+        return mdi;
+    }
+
 
     /************************************************************************
      *              Which Meta Data Server is Responsible 
@@ -21,6 +53,12 @@ public static class Utils
         return (int)(number % 6);
     }
 
+
+
+
+    /************************************************************************
+     *              Generate Unique Transactions ID 
+     ************************************************************************/
 
     public static string generateTransactionID() {
         var bytes = new byte[16];

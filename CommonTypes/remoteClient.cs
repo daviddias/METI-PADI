@@ -13,7 +13,7 @@ using log4net;
 
 public interface remoteClientInterface { 
     //usado pelo puppet-master
-    void open(string filename);                                                          //DONE
+    void open(string filename);                                                         //DONE
     void close(string filename);                                                        //DONE
     void create(string filename, int nbDataServers, int readQuorum, int writeQuorum);   //DONE                   
     void delete(string filename);                                                       //todo
@@ -31,7 +31,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     
     // Atributes
     public string clientID;
-    public string[] metaServerPort = new string[6];
+    public string[] metaServerPorts = new string[6];
     
     
     // File-Register and Byte-Array Register
@@ -44,12 +44,12 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     public remoteClient(string ID, string[] metaServerPorts)
     {
         clientID = ID;
-        this.metaServerPort[0] = metaServerPorts[0];
-        this.metaServerPort[1] = metaServerPorts[0];
-        this.metaServerPort[2] = metaServerPorts[1];
-        this.metaServerPort[3] = metaServerPorts[1];
-        this.metaServerPort[4] = metaServerPorts[2];
-        this.metaServerPort[5] = metaServerPorts[2];
+        this.metaServerPorts[0] = metaServerPorts[0];
+        this.metaServerPorts[1] = metaServerPorts[0];
+        this.metaServerPorts[2] = metaServerPorts[1];
+        this.metaServerPorts[3] = metaServerPorts[1];
+        this.metaServerPorts[4] = metaServerPorts[2];
+        this.metaServerPorts[5] = metaServerPorts[2];
 
         fileRegister = new List<FileHandler>(Constants.MAX_FILES_OPENED);
         byteArrayRegisterOLD = new List<byte[]>(Constants.MAX_FILES_OPENED);
@@ -144,14 +144,11 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     public void create(string filename, int nbDataServers, int readQuorum, int writeQuorum)
     {
         //1. Find out which Meta-Server to Call
-        MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
-        log.Info(this.clientID + " CREATE ::  Meta-Server to contact: " + Utils.whichMetaServer(filename));
+        MyRemoteMetaDataInterface mdi = Utils.getMetaDataRemoteInterface(filename, metaServerPorts);
+   
 
-        //2. If not available, try next one
-        //TODO
-
-
-        //3. Get File-Handle
+        //2. Get File-Handle
+        //---TODO--- Verificar se é possível criar (aka: se há Data-Servers suficientes para o request, caso não haja, temos de Bloquear
         log.Info(this.clientID + " CREATE ::  Sending create request to Meta-Server");
         FileHandler fh = mdi.create(this.clientID, filename, nbDataServers, readQuorum, writeQuorum);
         if (fh == null)
@@ -163,8 +160,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
 
         
-
-        //4. Contact Data-Servers to Prepare
+        //3. Contact Data-Servers to Prepare
         log.Info(this.clientID + " CREATE ::  Initiating 2PC");
         string transactionID = Utils.generateTransactionID(); 
         foreach (string dataServerPort in fh.dataServersPorts)
@@ -196,7 +192,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             }
         }
 
-        //5. Contact Data-Servers to Commit
+        //4. Contact Data-Servers to Commit
         transactionID = Utils.generateTransactionID(); //Generating new transaction ID for Commit
         foreach (string dataServerPort in fh.dataServersPorts)
         {
@@ -228,13 +224,13 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             }
         }
 
-        //6. Save FileHandler
+        //5. Save FileHandler
         fileRegister.Add(fh);
         
 
-        //7. Tell Meta-Data Server to Confirm Creation 
-        mdi.confirmCreate(this.clientID, filename, true); 
-        //TODO need to check if this guy is still up!
+        //6. Tell Meta-Data Server to Confirm Creation
+        MyRemoteMetaDataInterface mdiConfirm = Utils.getMetaDataRemoteInterface(filename, metaServerPorts);
+        mdiConfirm.confirmCreate(this.clientID, filename, true); 
         log.Info(this.clientID + " CREATE :: Confirmation Sent to Meta-Data Server, operation complete");
         return;
     }
@@ -263,8 +259,8 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
 
         //3. Contact MetaServers to open
-        MyRemoteMetaDataInterface meta_obj = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
-        filehandler = meta_obj.open(clientID, filename);
+        MyRemoteMetaDataInterface mdi = Utils.getMetaDataRemoteInterface(filename, metaServerPorts);
+        filehandler = mdi.open(clientID, filename);
 
         if (filehandler == null){
             Console.WriteLine("[CLIENT  open]:  MetaServer didn't opened the file!");
@@ -300,9 +296,8 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
 
         //3. Contact MetaServers to close
-        MyRemoteMetaDataInterface meta_obj = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
-        meta_obj.close(clientID, filehandler);
-
+        MyRemoteMetaDataInterface mdi = Utils.getMetaDataRemoteInterface(filename, metaServerPorts);
+        mdi.close(clientID, filehandler);
 
         //4. Remove from Open Files 
         fileRegister.Remove(filehandler);
@@ -354,13 +349,11 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
 
         //1. Find out which meta server to call
-        MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
+        MyRemoteMetaDataInterface mdi = Utils.getMetaDataRemoteInterface(filename, metaServerPorts);
         log.Info(this.clientID + " DELETE ::  Meta-Server to Contact: " + Utils.whichMetaServer(filename));
 
-        //2. If not available try next one
-        //TODO
-
-        //3. Invoke delete on meta server
+        
+        //2. Invoke delete on meta server
         log.Info(this.clientID + " DELETE ::  Sending create request to Meta-Server");
         FileHandler fh = mdi.delete(this.clientID, filename);
         if (fh == null) {
@@ -369,7 +362,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
         log.Info(this.clientID + " DELETE ::  Received the File Handler of file: " + fh.filenameGlobal);
 
-        //4. Contact data-server to prepare
+        //3. Contact data-server to prepare
         log.Info(this.clientID + " DELETE ::  Initiating 2PC");
         string transactionID = Utils.generateTransactionID(); 
         foreach (string dataServerPort in fh.dataServersPorts)
@@ -402,7 +395,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
 
 
-        //5. Contact data-servers to commit
+        //4. Contact data-servers to commit
         transactionID = Utils.generateTransactionID(); //Generating new transaction ID for Commit
         foreach (string dataServerPort in fh.dataServersPorts)
         {
@@ -433,11 +426,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             }
         }
 
-
-        //6. Tell metaserver to confirm deletion
-        mdi.confirmDelete(this.clientID, fh, true);
-        //TODO if not there, tell another!
-
+        //5. Tell metaserver to confirm deletion
+        MyRemoteMetaDataInterface mdiConfirm = Utils.getMetaDataRemoteInterface(filename, metaServerPorts);
+        mdiConfirm.confirmDelete(this.clientID, fh, true);
         log.Info(this.clientID + " DELETE ::  Confirmation Sent to Meta-Data Server, operation complete");
         return;
     }
@@ -503,7 +494,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         log.Info(this.clientID + " WRITE ::  File: " + fileRegister[reg].filenameGlobal + " is  open");
         
         //2. Find out which Meta-Server to Call 
-        MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(fh.filenameGlobal)]);
+        MyRemoteMetaDataInterface mdi = Utils.getMetaDataRemoteInterface(fh.filenameGlobal, metaServerPorts);
         log.Info(this.clientID + " WRITE ::  Meta-Server to Contact: " + Utils.whichMetaServer(fh.filenameGlobal));
 
         //3. If not available, try next one
@@ -578,10 +569,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             }
         }
 
-
         //7. Tell Meta-Data Server to Confirm Creation 
+        MyRemoteMetaDataInterface mdiConfirm = Utils.getMetaDataRemoteInterface(fh.filenameGlobal, metaServerPorts);
         mdi.confirmWrite(this.clientID, fh, true);
-        //TODO make sure this is still up - Actually we can find the right one down here, doesn't need to be up there
         log.Info(this.clientID + " WRITE ::  Operation Success on File: " + Utils.whichMetaServer(fh.filenameGlobal));
         return;
     }
@@ -591,10 +581,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
         write(reg, byteArrayRegisterOLD[byteArrayRegisterIndex]);
     }
-
-
-
-
 
 
 
@@ -749,15 +735,11 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                 case "WRITE":
                     if (parsed[3].StartsWith("\""))
                     {
-                        for (int i = 4; i < parsed.Length; i++)
-                            parsed[3] += " " + parsed[i];
+                        for (int i = 4; i < parsed.Length; i++) { parsed[3] += " " + parsed[i]; }
                         Byte[] bytes = System.Text.Encoding.UTF8.GetBytes(parsed[3]);
                         write(Convert.ToInt32(parsed[2]), bytes);
                     }
-                    else
-                    {
-                        write(Convert.ToInt32(parsed[2]), Convert.ToInt32(parsed[3]));
-                    }
+                    else { write(Convert.ToInt32(parsed[2]), Convert.ToInt32(parsed[3])); }
                     break;
             }
         }

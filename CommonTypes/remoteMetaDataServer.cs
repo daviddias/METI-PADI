@@ -32,8 +32,9 @@ public interface MyRemoteMetaDataInterface{
     FileHandler write(string clientID, FileHandler filehandler);
     void confirmWrite(string clientID, FileHandler filehander, Boolean wrote);
     void receiveUpdate(Dictionary<string, FileHandler>[] fileTable);
-    void receiveAlive(string port);
+    void receiveAlive(string port); //usado pelo Data-Server para dizer que está vivo
 
+    void alive(); //usado pelo cliente para verificar que este meta-data está vivo
 
     //usado pelo Puppet-Master
     void fail();
@@ -66,7 +67,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public static Dictionary<string, FileHandler>[] fileTables = new Dictionary<string, FileHandler>[6];
     
     /* Constructors */
-
     public MyRemoteMetaDataObject(){
         isfailed = false;
 
@@ -95,20 +95,23 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         for (int i = 0; i < 6; i++)
             fileTables[i] = new Dictionary<string, FileHandler>();
 
-            if (Convert.ToInt32(localPort) < Convert.ToInt32(aMetaServerPort)
-                && Convert.ToInt32(localPort) < Convert.ToInt32(bMetaServerPort))
-            { whoAmI = 0; }
-            else if (Convert.ToInt32(localPort) > Convert.ToInt32(aMetaServerPort)
+        if (Convert.ToInt32(localPort) < Convert.ToInt32(aMetaServerPort)
+            && Convert.ToInt32(localPort) < Convert.ToInt32(bMetaServerPort))
+        { whoAmI = 0; }
+        else
+        {
+            if (Convert.ToInt32(localPort) > Convert.ToInt32(aMetaServerPort)
                 && Convert.ToInt32(localPort) > Convert.ToInt32(bMetaServerPort))
-            { whoAmI = 1; }
-            else { whoAmI = 2; }
+            { whoAmI = 2; }
 
-            string path = Environment.ExpandEnvironmentVariables("%HOMEDRIVE%%HOMEPATH%\\PADI-FS\\") + System.Diagnostics.Process.GetCurrentProcess().ProcessName + "-" + whoAmI;
+            else { whoAmI = 1; }
+        }
+        string path = Environment.ExpandEnvironmentVariables("%HOMEDRIVE%%HOMEPATH%\\PADI-FS\\") + System.Diagnostics.Process.GetCurrentProcess().ProcessName + "-" + whoAmI;
 
-            if (!Directory.Exists(path))
-                Directory.CreateDirectory(path);
+        if (!Directory.Exists(path))
+            Directory.CreateDirectory(path);
 
-            Directory.SetCurrentDirectory(path);
+        Directory.SetCurrentDirectory(path);
 
         log.Info("Meta Server " + whoAmI + " is up!");
     }
@@ -123,11 +126,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
 
     /* Logic */
-    public string MetodoOla(){
-        return "[META_SERVER]   Ola eu sou o MetaData Server!";
-    }
+    public string MetodoOla(){ return "[META_SERVER]   Ola eu sou o MetaData Server!"; }
 
-
+    public void alive() { log.Info("Yep, I'm alive =)"); }
 
     /************************************************************************
      *              Invoked Methods by Clients
