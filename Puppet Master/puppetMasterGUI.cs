@@ -191,7 +191,8 @@ namespace Puppet_Master
             runningProcesses["m-" + 0].StartInfo.FileName = metaServerPath;
             runningProcesses["m-" + 0].Start();
             Console.WriteLine("Meta-Server 0 Started");
-            System.Threading.Thread.Sleep(1000);
+            System.Threading.Thread.Sleep(10000);
+
 
             String meta1 = (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 2).ToString();
             runningProcesses.Add("m-" + 1, new Process());
@@ -200,7 +201,7 @@ namespace Puppet_Master
             runningProcesses["m-" + 1].Start();
 
             Console.WriteLine("Meta-Server 1 Started");
-            System.Threading.Thread.Sleep(1000);
+            System.Threading.Thread.Sleep(10000);
 
             String meta2 = (firstMetaServerPort + 2).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString();
             runningProcesses.Add("m-" + 2, new Process());
@@ -209,7 +210,7 @@ namespace Puppet_Master
             runningProcesses["m-" + 2].Start();
 
             Console.WriteLine("Meta-Server 2 Started");
-            System.Threading.Thread.Sleep(1000);
+            System.Threading.Thread.Sleep(10000);
 
 
             listOfMetaServerPorts = meta0; //Meta0 Contem a ordem certa de Meta-Servers que corresponde as responsabilidades para serem entregues aos clientes

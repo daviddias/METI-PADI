@@ -91,20 +91,23 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         for (int i = 0; i < 6; i++)
             fileTables[i] = new Dictionary<string, FileHandler>();
 
-            if (Convert.ToInt32(localPort) < Convert.ToInt32(aMetaServerPort)
-                && Convert.ToInt32(localPort) < Convert.ToInt32(bMetaServerPort))
-            { whoAmI = 0; }
-            else if (Convert.ToInt32(localPort) > Convert.ToInt32(aMetaServerPort)
+        if (Convert.ToInt32(localPort) < Convert.ToInt32(aMetaServerPort)
+            && Convert.ToInt32(localPort) < Convert.ToInt32(bMetaServerPort))
+        { whoAmI = 0; }
+        else
+        {
+            if (Convert.ToInt32(localPort) > Convert.ToInt32(aMetaServerPort)
                 && Convert.ToInt32(localPort) > Convert.ToInt32(bMetaServerPort))
-            { whoAmI = 1; }
-            else { whoAmI = 2; }
+            { whoAmI = 2; }
 
-            string path = Environment.ExpandEnvironmentVariables("%HOMEDRIVE%%HOMEPATH%\\PADI-FS\\") + System.Diagnostics.Process.GetCurrentProcess().ProcessName + "-" + whoAmI;
+            else { whoAmI = 1; }
+        }
+        string path = Environment.ExpandEnvironmentVariables("%HOMEDRIVE%%HOMEPATH%\\PADI-FS\\") + System.Diagnostics.Process.GetCurrentProcess().ProcessName + "-" + whoAmI;
 
-            if (!Directory.Exists(path))
-                Directory.CreateDirectory(path);
+        if (!Directory.Exists(path))
+            Directory.CreateDirectory(path);
 
-            Directory.SetCurrentDirectory(path);
+        Directory.SetCurrentDirectory(path);
 
         log.Info("Meta Server " + whoAmI + " is up!");
     }
