@@ -13,7 +13,7 @@ using log4net;
 
 public interface remoteClientInterface { 
     //usado pelo puppet-master
-    void open(string filename);                                                          //DONE
+    void open(string filename);                                                         //DONE
     void close(string filename);                                                        //DONE
     void create(string filename, int nbDataServers, int readQuorum, int writeQuorum);   //DONE                   
     void delete(string filename);                                                       //todo
@@ -152,6 +152,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
 
         //3. Get File-Handle
+        //---TODO--- Verificar se é possível criar (aka: se há Data-Servers suficientes para o request, caso não haja, temos de Bloquear
         log.Info(this.clientID + " CREATE ::  Sending create request to Meta-Server");
         FileHandler fh = mdi.create(this.clientID, filename, nbDataServers, readQuorum, writeQuorum);
         if (fh == null)
@@ -163,7 +164,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
 
         
-
         //4. Contact Data-Servers to Prepare
         log.Info(this.clientID + " CREATE ::  Initiating 2PC");
         string transactionID = Utils.generateTransactionID(); 

@@ -134,7 +134,6 @@ namespace Puppet_Master
                     }
                     break;
                 case "DUMP": dump(parsed[1]); break;
-                case "EXESCRIPT": exeScript(parsed[1], parsed[2]); break;
                 case "HELLO": hello(parsed[1]); break;
             }
         }
@@ -237,7 +236,6 @@ namespace Puppet_Master
         public delegate void OpenRemoteAsyncDelegate(string filename);
         public delegate void CloseRemoteAsyncDelegate(string filename);
         public delegate void DeleteRemoteAsyncDelegate(string filename);
-        public delegate void ExecRemoteAsyncDelegate(List<string> filename);
         public delegate void ReadRemoteAsyncDelegate(int fileregister, int semantics, int bytearrayregister);
 
 
@@ -276,10 +274,8 @@ namespace Puppet_Master
             // Metadata Servers
             if (process.StartsWith("m-"))
             {
-                //mdi.recover();
-                RemotingServices.Connect(typeof(MyRemoteMetaDataInterface), "tcp://" + "localhost:" + listOfMetaServerPorts[(int)Char.GetNumericValue(process[2])] + "/MyRemoteMetaDataObjectName");
                 mdi = Utils.getRemoteMetaDataObj(listOfMetaServerPorts[(int)Char.GetNumericValue(process[2])]);
-
+                //mdi.recover();
                 RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.recover);
                 IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
             }
@@ -405,26 +401,6 @@ namespace Puppet_Master
             MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(listOfMetaServerPorts[(int)Char.GetNumericValue(process[2])]);
             RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.dump);
             IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
-        }
-
-        private void exeScript(string process, string scriptFile)
-        {
-            List<string> commands = new List<string>();
-            StreamReader sw = new StreamReader(scriptFile);
-            while (!sw.EndOfStream)
-                commands.Add(sw.ReadLine());
-            sw.Close();
-
-            // Metadata Servers
-            if (process.StartsWith("c-"))
-            {
-                remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
-                ExecRemoteAsyncDelegate RemoteExec = new ExecRemoteAsyncDelegate(rci.exeScript);
-                IAsyncResult RemAr = RemoteExec.BeginInvoke(commands, null, null);
-            }
-            else
-                outputBox.Text = "Cannot exeScript the process " + process + " because it isn't a client process";
-
         }
 
         /*Communication Testing Method*/
