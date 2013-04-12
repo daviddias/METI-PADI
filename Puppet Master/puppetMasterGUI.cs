@@ -279,11 +279,15 @@ namespace Puppet_Master
                 Console.WriteLine("Data-Server Started");
                 System.Threading.Thread.Sleep(1000);
 
-                //if(this.listOfDataServerPorts == null || )
-                //String[] dataPorts[]
-                // (firstDataServerPort + serverNum).ToString()
-
-                //this.listOfDataServerPorts[serverNum];
+                String[] dataPorts = null;
+                if (this.listOfDataServerPorts == null || this.listOfDataServerPorts.Length < serverNum)
+                {
+                    dataPorts = new String[serverNum+1];
+                    if(this.listOfDataServerPorts != null)
+                        this.listOfDataServerPorts.CopyTo(dataPorts, 0);
+                    dataPorts[serverNum] = (firstDataServerPort + serverNum).ToString();
+                }
+                this.listOfDataServerPorts = dataPorts;
             }
 
             // Client
