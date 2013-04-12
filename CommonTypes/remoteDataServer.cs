@@ -13,8 +13,8 @@ public interface MyRemoteDataInterface
     void showFilesinMutation();
 
     //usado pelo cliente
-    Boolean prepareWrite(string clientID, string local_file_name, Byte[] byte_array);   //DONE
-    Boolean commitWrite(string clientID, string local_file_name);                       //DONE
+    TransactionDTO prepareWrite(TransactionDTO dto);                                    //DONE
+    TransactionDTO commitWrite(TransactionDTO dto);                                     //DONE
     byte[] read(string local_file_name, int semantic);                                  //SEMI-DONE (ignora a semantica)
     TransactionDTO prepareCreate(TransactionDTO dto);                                   //DONE
     TransactionDTO commitCreate(TransactionDTO dto);                                    //DONE
@@ -101,69 +101,74 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
 
     //Usado pelo cliente
-    public Boolean prepareWrite(string clientID, string local_file_name, Byte[] byte_array) {
-
+    public TransactionDTO prepareWrite(TransactionDTO dto) {
+        TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameForDataServer);
         //showFilesinMutation();
 
         if (isfailed == true){
-            Console.WriteLine("[DATA_SERVER: prepareWrite]    The server has failed!");
-            return false;
+            log.Info("WRITE :: PrepareWrite : This server is 'failed' can't comply with the request");
+            newDTO.success = false;
+            return newDTO;
         }
 
         if (isfrozen == true){
-
-            Console.WriteLine("[DATA_SERVER: PrepareWrite]    The server is frozen!");
+            log.Info("WRITE :: PrepareWrite : This server is 'frozen' can't comply with the request right now");
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
         }
 
         //Verifica a existencia do ficheiro
-        if (!File.Exists(local_file_name))
+        if (!File.Exists(dto.filenameForDataServer))
         {
-            Console.WriteLine("[DATA_SERVER: PrepareWrite]    The file doesn't exist!");
-            return false;
+            log.Info("WRITE :: PrepareWrite : File(LocalName): " + dto.filenameForDataServer + " does not exist");
+            newDTO.success = false;
+            return newDTO;
         }
 
         //Verifica se o ficheiro ja esta a ser alterado
-        if (mutationList.Find(f => f.filename == local_file_name) != null){
-            Console.WriteLine("[DATA_SERVER: PrepareWrite]    File is being used by other process!");
-            return false;
+        if (mutationList.Find(f => f.filename == dto.filenameForDataServer) != null){
+            log.Info("WRITE :: PrepareWrite : File(LocalName): " + dto.filenameForDataServer + " does not exist");
+            newDTO.success = false;
+            return newDTO;
         }
 
-        MutationListItem mutationEntry = new MutationListItem(local_file_name, clientID, byte_array);
+        MutationListItem mutationEntry = new MutationListItem(dto.filenameForDataServer, dto.clientID, dto.filecontent);
         mutationList.Add(mutationEntry);
 
-        Console.WriteLine("[DATA_SERVER: PrepareWrite]    Success!");
-        return true; 
+        log.Info("WRITE :: PrepareWrite : Operation complete for File(LocalName): " + dto.filenameForDataServer);
+        newDTO.success = true;
+        return newDTO;
     }
 
-    public Boolean commitWrite(string clientID, string local_file_name) {
-        log.Info("Starting commitWrite from client: " + clientID);
+    public TransactionDTO commitWrite(TransactionDTO dto) {
+        TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameForDataServer);
+        
         if (isfailed == true){
-            Console.WriteLine("[DATA_SERVER: commitWrite]    The server has failed!");
-            return false;
+            log.Info("WRITE :: CommitWrite : This server is 'failed' can't comply with the request");
+            newDTO.success = false;
+            return newDTO;
         }
 
         if (isfrozen == true){
-
-            Console.WriteLine("[DATA_SERVER: commitWrite]    The server is frozen!");
-            
+            log.Info("WRITE :: CommitWrite : This server is 'frozen' can't comply with the request right now");
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
         }
 
-        MutationListItem item = mutationList.Find(i => i.filename == local_file_name && i.clientID == clientID);
+        MutationListItem item = mutationList.Find(i => i.filename == dto.filenameForDataServer && i.clientID == dto.clientID);
         if (item == null){
-            Console.WriteLine("[DATA_SERVER: commitWrite]    The file is not prepared!");
-            return false;
+            log.Info("WRITE :: CommitWrite : Client: " + dto.clientID + " is trying to Commit the file(localname): " + dto.filenameForDataServer +" without preparing");
+            newDTO.success = false;
+            return newDTO;
         }
 
         mutationList.Remove(item);
         File.WriteAllBytes(item.filename, item.byte_array);
-        log.Info("Done commitWrite from client: " + clientID);
-        return true; 
+        log.Info("WRITE :: CommiteWrite : Operation complete from Client: " + dto.clientID + " file(localname): " + dto.filenameForDataServer);
+        newDTO.success = true;
+        return newDTO;
     }
 
 
