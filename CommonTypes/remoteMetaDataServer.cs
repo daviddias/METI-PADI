@@ -5,7 +5,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Net;
+using System.Net.Sockets;
+using System.Runtime.Remoting;
+using System.Runtime.Remoting.Messaging;
+using System.Runtime.Remoting.Channels;
+using System.Runtime.Remoting.Channels.Tcp;
 using log4net;
+using System.Xml;
 
 
 
@@ -23,6 +30,7 @@ public interface MyRemoteMetaDataInterface{
     void confirmDelete(string clientID, FileHandler filehandler, Boolean deleted);
     FileHandler write(string clientID, FileHandler filehandler);
     void confirmWrite(string clientID, FileHandler filehander, Boolean wrote);
+    void receiveUpdate(Dictionary<string, FileHandler>[] fileTable);
 
     //usado pelo Puppet-Master
     void fail();
@@ -91,6 +99,10 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     /* Para a thread nunca se desligar */
     public override object InitializeLifetimeService(){ return null; }
 
+    /* delegates */
+    public delegate void prepareUpdateRemoteAsyncDelegate(Dictionary<string, FileHandler>[] newFileTable);
+
+
 
     /* Logic */
     public string MetodoOla(){
@@ -136,7 +148,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         fh.byWhom.Add(clientID);
 
         //4. Tells the other MetaServers to update
-        //TODO
+        sendUpdate();
 
         log.Info("[METASERVER: open]    Success)!");
         return fh;
@@ -171,7 +183,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         filehandler.byWhom.Remove(ClientID);
 
         //4. Tells the other MetaServers to update
-        //TODO
+        sendUpdate();
 
         log.Info("[METASERVER: close]    Success)!");
     }
@@ -228,8 +240,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         //7. Return File-Handler
         log.Info("[METASERVER: create]    Success!");
+        
         return fh;
-       
     }
 
     public void confirmCreate(string clientID, string filename, Boolean created) 
@@ -244,6 +256,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //2. Faz unlock ao ficheiro
         fileTables[Utils.whichMetaServer(filename)][filename].isLocked = false;
         log.Info("[METASERVER: confirmCreate]    Success!");
+
+        // 3. Send Updated metadata table to others Metadata Servers
+        sendUpdate();
     }
 
     public FileHandler delete(string clientID, string filename)
@@ -295,6 +310,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         {
             fileTables[Utils.whichMetaServer(filehandler.filenameGlobal)].Remove(filehandler.filenameGlobal);
             log.Info("[METASERVER: confirmDelete]    Success!");
+            // 3. Send Updated metadata table to others Metadata Servers
+            sendUpdate();
             return;
         }
 
@@ -355,6 +372,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //2. Faz unlock ao ficheiro
         filehandler.isLocked = false;
         log.Info("[METASERVER: confirmWrite]    Success!");
+        
+        // 3. Send Updated metadata table to others Metadata Servers
+        sendUpdate();
     }
 
     /************************************************************************
@@ -381,6 +401,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             log.Info("[METASERVER: recover]    The server was not failed!");
             return;
         }
+
+
+
         isfailed = false;
         return;
     }
@@ -427,4 +450,30 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public Boolean unlockFile(string Filename) { return true; }
 
     //public void updateHeatTable(List<HeatTableItem> table) { }
+
+    public void sendUpdate()
+    {
+        // get other 
+        MyRemoteMetaDataInterface[] mdi = new MyRemoteMetaDataInterface[2];
+        mdi[0] = Utils.getRemoteMetaDataObj(aMetaServerPort);
+        mdi[1] = Utils.getRemoteMetaDataObj(bMetaServerPort);
+
+        for (int i = 0; i < 2; i++)
+        {
+            prepareUpdateRemoteAsyncDelegate RemoteUpdate = new prepareUpdateRemoteAsyncDelegate(mdi[i].receiveUpdate);
+            IAsyncResult RemAr = RemoteUpdate.BeginInvoke(fileTables, null, null);
+
+            log.Info(" UPDATE SENDED::  Updated metadata table sended in background to others Metadata Servers");
+        }
+    }
+
+    public void receiveUpdate(Dictionary<string, FileHandler>[] newFileTable)
+    {
+        for (int i = 0; i < 6; i++)
+            if (i != whoAmI * 2 && i != whoAmI * 2 + 1) // dont update the files that it is responsible
+                fileTables[i] = newFileTable[i];
+
+        log.Info(" UPDATE RECEIVED::  Updated metadata table sended in background to others Metadata Servers");
+    }
+
 }

@@ -59,7 +59,7 @@ public class FileHandler
         s += "\t" + "Write Quorum - " + this.writeQuorum + "\n";
 
         s += "\t" + "DataServers where the file is open:\n";
-        s += "\t\t\tDataServer\tLocal Filename";
+        s += "\t\t\tDataServer\tLocal Filename\n";
         foreach (string dataServer in dataServersFiles.Keys)
             s += "\t\t\t " + dataServer + " \t " + dataServersFiles[dataServer] + "\n";
 
