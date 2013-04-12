@@ -9,8 +9,8 @@ using System.Runtime.Serialization.Formatters;
 class MetaDataServer{
     static void Main(string[] args){
         //Meta-Data Servers - Args <MetaDataPortLocal> <MetaDataPortOtherA> <MetaDataPortOtherB> [DataServerPort] [DataServer Port] [DataServer Port]...
-        Console.WriteLine("How many args: " + args.Length);
-        Console.WriteLine("What are the args: " + args);
+        //Console.WriteLine("How many args: " + args.Length);
+        //Console.WriteLine("What are the args: " + args);
         string thisMetaServerPort = args[0];
         string aMetaServerPort = args[1];
         string bMetaServerPort = args[2];

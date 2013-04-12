@@ -29,19 +29,15 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 {
     private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
     
-    public const int MAX_FILES_OPENED = 10;
-
-    public string[] metaServerPort = new string[6];
-    // Read Modes
-    public const int DEFAULT = 1;
-    public const int MONOTONIC = 2;
-
     // Atributes
     public string clientID;
-        
+    public string[] metaServerPort = new string[6];
+    
+    
     // File-Register and Byte-Array Register
     public static List<FileHandler> fileRegister;                   
-    public static List<byte[]> byteArrayRegister = new List<byte[]>(10);
+    public static List<byte[]> byteArrayRegisterOLD;
+    public static List<ByteArrayRecord> byteArrayRegister;
 
    
     //Construtor
@@ -55,18 +51,19 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         this.metaServerPort[4] = metaServerPorts[2];
         this.metaServerPort[5] = metaServerPorts[2];
 
-        byteArrayRegister = new List<byte[]>(10);
-        fileRegister = new List<FileHandler>(10);
+        fileRegister = new List<FileHandler>(Constants.MAX_FILES_OPENED);
+        byteArrayRegisterOLD = new List<byte[]>(Constants.MAX_FILES_OPENED);
+        byteArrayRegister = new List<ByteArrayRecord>(Constants.MAX_FILES_OPENED);
 
         readQUORUM = new Dictionary<string, List<TransactionDTO>>();
         writeQUORUM = new Dictionary<string,int>();
         createQUORUM = new Dictionary<string, int>();
         deleteQUORUM = new Dictionary<string, int>();
 
-        System.Console.WriteLine("Client: - " + clientID + " -  is up!");
+        log.Info("Client: - " + this.clientID + " -  is up!");
     }
 
-    /* Live forever */
+    /* (tune)I'm gonna live forever lalala*/
     public override object InitializeLifetimeService() { return null; }
 
     /* communication testing */
@@ -81,7 +78,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         return false;
     }
 
-    /* Get filehandler from register */
+    /* Get filehandler from fileRegister */
     private FileHandler getFileHandler(string filename)
     {
         foreach (FileHandler fh in fileRegister)
@@ -95,16 +92,11 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
 
 
-
-
-
-
     /************************************************************************
      *          
      *                 Invoked Methods by Pupper Master
      *              
      ************************************************************************/
-
 
 
 
@@ -265,7 +257,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
 
         //2. Check if there aren't 10 files already opened
-        if (fileRegister.Count >= MAX_FILES_OPENED) {
+        if (fileRegister.Count >= Constants.MAX_FILES_OPENED) {
             Console.WriteLine("[CLIENT  open]:  Can't have 10 opened files at once!");
             return;
         }
@@ -597,7 +589,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     /* To be used for reference of byteArrayRegister */
     public void write(int reg, int byteArrayRegisterIndex)
     {
-        write(reg, byteArrayRegister[byteArrayRegisterIndex]);
+        write(reg, byteArrayRegisterOLD[byteArrayRegisterIndex]);
     }
 
 
@@ -689,13 +681,13 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                                 higherVersion = loopDTO.version;
                             }
                         }
-                        if (semantics == DEFAULT) //Gives the most recent version of the Quorum
+                        if (semantics == Constants.DEFAULT) //Gives the most recent version of the Quorum
                         {
                             content = bufferDTO.filecontent;
                             log.Info(this.clientID + " READ ::  DEFAULT - Higher Version: " + higherVersion);
                             fh.version = higherVersion;
                         }
-                        if (semantics == MONOTONIC) //Gives the most recent version of the Quorum, if this one is older than last read, return last read instead
+                        if (semantics == Constants.MONOTONIC) //Gives the most recent version of the Quorum, if this one is older than last read, return last read instead
                         {
                             if (higherVersion < fh.version) 
                             {
@@ -704,8 +696,8 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                                 //2. Se estiver a null usar o do loop(porque nunca tinha lido) 
                                 //3. Se não estiver a null usar o que esta no byteArrayRegister
                                 //Nota: Isto causa o problema que se tentar-mos usar um byteArrayRegister já usado, ele vai achar pode vir a achar que esse é o tal content que tem mais actualizado, corrigir isto para a versão beta
-                                if (byteArrayRegister[byteArrayRegisterIndex] == null) { content = bufferDTO.filecontent; }
-                                else { content = byteArrayRegister[byteArrayRegisterIndex]; }
+                                if (byteArrayRegisterOLD[byteArrayRegisterIndex] == null) { content = bufferDTO.filecontent; }
+                                else { content = byteArrayRegisterOLD[byteArrayRegisterIndex]; }
                             }
                             else
                             {
@@ -720,7 +712,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                 }
             }
         }
-        byteArrayRegister.Insert(byteArrayRegisterIndex, content); //update byte register
+        byteArrayRegisterOLD.Insert(byteArrayRegisterIndex, content); //update byte register
 
         log.Info(this.clientID + " READ :: Operation complete, file:  " + fileRegister[fileRegisterIndex].filenameGlobal + " has this content: \n\r " + System.Text.Encoding.Default.GetString(content));
         return;

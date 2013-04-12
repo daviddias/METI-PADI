@@ -71,14 +71,13 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         for (int i = 0; i < 6; i++)
             fileTables[i] = new Dictionary<string, FileHandler>();
 
-        log.Info("Meta-Data Server is up!");
-
         string path = Environment.ExpandEnvironmentVariables("%HOMEDRIVE%%HOMEPATH%\\PADI-FS\\") + System.Diagnostics.Process.GetCurrentProcess().ProcessName + "-" + whoAmI;
 
         if (!Directory.Exists(path))
             Directory.CreateDirectory(path);
 
         Directory.SetCurrentDirectory(path);
+        log.Info("Meta-Data Server is up!");
     }
 
     public MyRemoteMetaDataObject(string _localPort, string _aMetaServerPort, string _bMetaServerPort, string[] _dataServersPorts){
