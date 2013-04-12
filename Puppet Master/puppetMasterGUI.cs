@@ -343,6 +343,10 @@ namespace Puppet_Master
 
         private void fail(string process)
         {
+            // verifies if process is already running, if not start it
+            if (!isRunning(process))
+                startAlone(process);
+
             MyRemoteMetaDataInterface mdi;
             MyRemoteDataInterface dsi;
        
@@ -395,6 +399,10 @@ namespace Puppet_Master
 
         private void freeze(string process)
         {
+            // verifies if process is already running, if not start it
+            if (!isRunning(process))
+                startAlone(process);
+
             MyRemoteDataInterface dsi;
             // Data Servers
             if (process.StartsWith("d-"))
@@ -411,6 +419,9 @@ namespace Puppet_Master
 
         private void unfreeze(string process)
         {
+            // verifies if process is already running, if not start it
+            if (!isRunning(process))
+                startAlone(process);
 
             MyRemoteDataInterface dsi;
 
@@ -430,6 +441,10 @@ namespace Puppet_Master
 
         private void create(string process, string filename, int nbDataServers, int readQuorum, int writeQuorum)
         {
+            // verifies if process is already running, if not start it
+            if (!isRunning(process))
+                startAlone(process);
+
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
             //rci.create(filename, nbDataServers, readQuorum, writeQuorum);
             CreateRemoteAsyncDelegate RemoteDel = new CreateRemoteAsyncDelegate(rci.create);
@@ -440,6 +455,10 @@ namespace Puppet_Master
 
         private void open(string process,string filename)
         {
+            // verifies if process is already running, if not start it
+            if (!isRunning(process))
+                startAlone(process);
+
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
             //rci.open(filename);
             OpenRemoteAsyncDelegate RemoteDel = new OpenRemoteAsyncDelegate(rci.open);
@@ -450,6 +469,10 @@ namespace Puppet_Master
 
         private void close(string process, string filename)
         {
+            // verifies if process is already running, if not start it
+            if (!isRunning(process))
+                startAlone(process);
+
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
             //rci.close(filename); 
             OpenRemoteAsyncDelegate RemoteDel = new OpenRemoteAsyncDelegate(rci.close);
@@ -457,6 +480,10 @@ namespace Puppet_Master
         }
 
         private void delete(string process, string filename) {
+            // verifies if process is already running, if not start it
+            if (!isRunning(process))
+                startAlone(process);
+
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
             //rci.create(filename, nbDataServers, readQuorum, writeQuorum);
             DeleteRemoteAsyncDelegate RemoteDel = new DeleteRemoteAsyncDelegate(rci.delete);
@@ -466,6 +493,10 @@ namespace Puppet_Master
 
         private void read(string process, int reg, string semantics, int byteArrayRegister)
         {
+            // verifies if process is already running, if not start it
+            if (!isRunning(process))
+                startAlone(process);
+
             int DEFAULT = 1;
             int MONOTONIC = 2;
             int semantic;
@@ -485,6 +516,10 @@ namespace Puppet_Master
   
         private void write(string process, int reg, string content)
         {
+            // verifies if process is already running, if not start it
+            if (!isRunning(process))
+                startAlone(process);
+
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
             Byte[] bytes = System.Text.Encoding.UTF8.GetBytes(content);
             //rci.write(reg, bytes); 
@@ -494,6 +529,10 @@ namespace Puppet_Master
 
         private void write(string process, int reg, int byteArrayRegister)
         {
+            // verifies if process is already running, if not start it
+            if (!isRunning(process))
+                startAlone(process);
+
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
             //rci.write(reg, byteArray);
             WriteRemoteAsyncDelegate RemoteDel = new WriteRemoteAsyncDelegate(rci.write);
@@ -502,6 +541,10 @@ namespace Puppet_Master
 
         private void dump(string process) 
         {
+            // verifies if process is already running, if not start it
+            if (!isRunning(process))
+                startAlone(process);
+
             MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(listOfMetaServerPorts[(int)Char.GetNumericValue(process[2])]);
             RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.dump);
             IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
