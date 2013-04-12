@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-class ByteArrayRecord
+public class ByteArrayRecord
 {
     public string filenameGlobal;
     public long version;
