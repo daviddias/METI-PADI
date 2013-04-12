@@ -20,12 +20,14 @@ public static class Utils
     public static MyRemoteMetaDataInterface getMetaDataRemoteInterface(string filename, string[] metaServerPorts)
     {
         int metaServerToContact = Utils.whichMetaServer(filename);
+        MyRemoteMetaDataInterface mdi;
         while (true)
         {
-            MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPorts[metaServerToContact]);
-            try
-            {
-                //mdi.alive();
+            mdi = Utils.getRemoteMetaDataObj(metaServerPorts[metaServerToContact]);
+            try 
+            { 
+                mdi.alive();
+                break; //this one is alive
             }
             catch
             {
@@ -33,14 +35,9 @@ public static class Utils
                 if (metaServerToContact > 5) { metaServerToContact = 0; }
                 continue;
             }
-
         }
-       
-
-        
         log.Info("UTILS ::  Meta-Server to contact: " + Utils.whichMetaServer(filename) + " for filename: " + filename);
-
-        return null;
+        return mdi;
     }
 
 

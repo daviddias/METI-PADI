@@ -32,6 +32,7 @@ public interface MyRemoteMetaDataInterface{
     FileHandler write(string clientID, FileHandler filehandler);
     void confirmWrite(string clientID, FileHandler filehander, Boolean wrote);
     void receiveUpdate(Dictionary<string, FileHandler>[] fileTable);
+    void alive();
 
     //usado pelo Puppet-Master
     void fail();
@@ -64,7 +65,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public static Dictionary<string, FileHandler>[] fileTables = new Dictionary<string, FileHandler>[6];
     
     /* Constructors */
-
     public MyRemoteMetaDataObject(){
         isfailed = false;
 
@@ -119,11 +119,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
 
     /* Logic */
-    public string MetodoOla(){
-        return "[META_SERVER]   Ola eu sou o MetaData Server!";
-    }
+    public string MetodoOla(){ return "[META_SERVER]   Ola eu sou o MetaData Server!"; }
 
-
+    public void alive() { log.Info("Yep, I'm alive =)"); }
 
     /************************************************************************
      *              Invoked Methods by Clients
