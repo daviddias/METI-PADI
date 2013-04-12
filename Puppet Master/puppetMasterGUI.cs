@@ -80,8 +80,20 @@ namespace Puppet_Master
 
 
 
+        /* check if process is running */
+        private Boolean isRunning(string process)
+        {
+            return runningProcesses.ContainsKey(process);
+        }
 
-
+        /* check there are metaservers already running */
+        private bool thereAreMetaServers()
+        {
+            foreach (string key in runningProcesses.Keys)
+                if (key.StartsWith("m-"))
+                    return true;
+            return false;
+        }
 
         /****************************************************************************************
          *                                  Logic functions
@@ -178,7 +190,6 @@ namespace Puppet_Master
             runningProcesses["m-" + 0].StartInfo.Arguments = meta0 + " " +  listOfDataServerPorts;
             runningProcesses["m-" + 0].StartInfo.FileName = metaServerPath;
             runningProcesses["m-" + 0].Start();
-
             Console.WriteLine("Meta-Server 0 Started");
             System.Threading.Thread.Sleep(1000);
 
@@ -221,7 +232,65 @@ namespace Puppet_Master
             this.listOfClientPorts = listOfClientPorts.Split(' ');
         }
 
+        private void startAlone(string process)
+        {
+            // is already checked before call this if the process is already started
 
+            int serverNum = int.Parse(process[2].ToString());
+
+
+            // Metadata Servers
+            if (process.StartsWith("m-"))
+            {
+                String metaServerPath = Environment.CurrentDirectory.Replace("Puppet Master", "Meta-Data Server");
+                metaServerPath += "/Meta-Data Server.exe";
+
+                string listOfMetas = (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 2).ToString();
+                string meta = listOfMetas;
+                switch (serverNum)
+                {
+                    case 0: meta = (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 2).ToString(); break;
+                    case 1: meta = (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 2).ToString(); break;
+                    case 2: meta = (firstMetaServerPort + 2).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString(); break;
+                }
+
+                runningProcesses.Add("m-" + serverNum, new Process());
+                runningProcesses["m-" + serverNum].StartInfo.Arguments = meta + " " + listOfDataServerPorts;
+                runningProcesses["m-" + serverNum].StartInfo.FileName = metaServerPath;
+                runningProcesses["m-" + serverNum].Start();
+                System.Threading.Thread.Sleep(100);
+
+                this.listOfMetaServerPorts = listOfMetas.Split(' ');
+
+                
+            }
+
+            // Data Servers
+            if (process.StartsWith("d-"))
+            {
+                String dataServerPath = Environment.CurrentDirectory.Replace("Puppet Master", "Data-Server");
+                dataServerPath += "/Data-Server.exe";
+
+                runningProcesses.Add("d-" + serverNum, new Process());
+                runningProcesses["d-" + serverNum].StartInfo.Arguments = (firstDataServerPort + serverNum).ToString() + " " + serverNum;
+                runningProcesses["d-" + serverNum].StartInfo.FileName = dataServerPath;
+                runningProcesses["d-" + serverNum].Start();
+                Console.WriteLine("Data-Server Started");
+                System.Threading.Thread.Sleep(1000);
+
+                //if(this.listOfDataServerPorts == null || )
+                //String[] dataPorts[]
+                // (firstDataServerPort + serverNum).ToString()
+
+                //this.listOfDataServerPorts[serverNum];
+            }
+
+            // Client
+            if (process.StartsWith("c-"))
+            {
+                Console.Write(process);
+            }
+        }
 
 
         /****************************************************************************************
@@ -268,6 +337,10 @@ namespace Puppet_Master
 
         private void recover(string process)
         {
+            // verifies if process is already running, if not start it
+            if (!isRunning(process))
+                startAlone(process);
+
             MyRemoteMetaDataInterface mdi;
             MyRemoteDataInterface dsi;
 
