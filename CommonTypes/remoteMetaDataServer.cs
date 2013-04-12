@@ -246,6 +246,18 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         log.Info("[METASERVER: confirmCreate]    Success!");
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
     public FileHandler delete(string clientID, string filename)
     {
 

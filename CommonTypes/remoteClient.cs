@@ -60,7 +60,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         readQuorum = new Dictionary<string, int>();
         writeQUORUM = new Dictionary<string,int>();
         createQUORUM = new Dictionary<string, int>();
-
+        deleteQUORUM = new Dictionary<string, int>();
 
         System.Console.WriteLine("Client: - " + clientID + " -  is up!");
     }
@@ -114,12 +114,8 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
      *-----------------------------------------------------------------------*/
 
     // Delegates
-    //public delegate TransactionDTO prepareCreateRemoteAsyncDelegate(string transactionID, string clientID, string local_file_name);
-    //public delegate TransactionDTO commitCreateRemoteAsyncDelegate(string transactionID, string clientID, string local_file_name);
     public delegate TransactionDTO prepareCreateRemoteAsyncDelegate(TransactionDTO dto);
     public delegate TransactionDTO commitCreateRemoteAsyncDelegate(TransactionDTO dto);
-
-
 
     private static Dictionary<string, int> createQUORUM;  //Key - Transaction ID ; int - number of responses
 
@@ -169,7 +165,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             log.Info(this.clientID + " CREATE :: Meta Server didn't create the file!"); // Change this to know the reason
             return;
         }
-        log.Info(this.clientID + " CREATE ::  Received the File Handler");
+        log.Info(this.clientID + " CREATE ::  Received the File Handler of file: " + fh.filenameGlobal);
         
 
         //4. Save File-Handle
@@ -179,8 +175,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         //5. Contact Data-Servers to Prepare
         log.Info(this.clientID + " CREATE ::  Initiating 2PC");
         string transactionID = Utils.generateTransactionID(); 
-        //TODO Create TransactionDTO and use it!
-
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
@@ -188,15 +182,13 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.prepareCreateRemoteAsyncCallBack);
             TransactionDTO prepateDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);
             IAsyncResult RemAr = RemoteDel.BeginInvoke(prepateDTO, RemoteCallback, null);
-            //di.prepareCreate(this.clientID, filename);
+            //di.prepareCreate(this.clientID, filename); SYNC
         }
         log.Info(this.clientID + " CREATE ::  2PC 1st Phase - Prepare Create Assync Calls Sent");
 
-
-
         while (true)
         {
-            System.Threading.Thread.Sleep(1); // Wair 1ms to avoid that the second server receive a commit before a prepare
+            System.Threading.Thread.Sleep(1); // Wait 1ms to avoid that the second server receive a commit before a prepare
 
             lock (createQUORUM)
             {
@@ -213,7 +205,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
 
         //6. Contact Data-Servers to Commit
-        transactionID = Utils.generateTransactionID(); //Generating new transaction ID for Comming
+        transactionID = Utils.generateTransactionID(); //Generating new transaction ID for Commit
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
@@ -224,8 +216,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             //di.commitCreate(this.clientID, filename);
         }
         log.Info(this.clientID + " CREATE ::  2PC 2nd Phase - Commit Create Assync Calls Sent");
-
-
 
         while (true)
         {
@@ -247,16 +237,11 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
 
         //7. Tell Meta-Data Server to Confirm Creation 
-        mdi.confirmCreate(this.clientID, filename, true); //TODO need to check if this guy is still up!
+        mdi.confirmCreate(this.clientID, filename, true); 
+        //TODO need to check if this guy is still up!
         log.Info(this.clientID + " CREATE :: Confirmation Sent to Meta-Data Server, operation complete");
         return;
     }
-
-
-
-
-
-
 
 
 
@@ -291,17 +276,11 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             return;
         }
 
-        
         //openFiles.Add(filename, filehandler);
         register.Add(filehandler);
         Console.WriteLine("[CLIENT  open]:  Success!");
         return;
     }
-
-
-
-
-
 
 
     /*------------------------------------------------------------------------         
@@ -318,7 +297,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                 break;
             }
         }
-
 
         if (filehandler == null)
         {
@@ -341,33 +319,42 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
 
 
-
-
-
-
     /*------------------------------------------------------------------------         
      *                                   DELETE
      *-----------------------------------------------------------------------*/
 
     //Asynchronous calls delegates
-    public delegate TransactionDTO prepareDeleteRemoteAsyncDelegate(string clientID, string local_file_name);
-    public delegate TransactionDTO commitDeleteRemoteAsyncDelegate(string clientID, string local_file_name);
+    //public delegate TransactionDTO prepareDeleteRemoteAsyncDelegate(string clientID, string local_file_name);
+    //public delegate TransactionDTO commitDeleteRemoteAsyncDelegate(string clientID, string local_file_name);
+    public delegate TransactionDTO prepareDeleteRemoteAsyncDelegate(TransactionDTO dto);
+    public delegate TransactionDTO commitDeleteRemoteAsyncDelegate(TransactionDTO dto);
+
+    private static Dictionary<string, int> deleteQUORUM;  //Key - Transaction ID ; int - number of responses
 
     public static void prepareDeleteRemoteAsyncCallBack(IAsyncResult ar)
     {
-        // Alternative 2: Use the callback to get the return value
         prepareDeleteRemoteAsyncDelegate del = (prepareDeleteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
-
+        TransactionDTO assyncResult = del.EndInvoke(ar);
+        log.Info(assyncResult.clientID + " DELETE ::  Call Back Received - PrepareDelete for transaction: " + assyncResult.transactionID);
+        if (assyncResult.success)
+        {
+            if (deleteQUORUM.ContainsKey(assyncResult.transactionID)) { deleteQUORUM[assyncResult.transactionID]++; }
+            else { deleteQUORUM.Add(assyncResult.transactionID, 1); }
+        }
         return;
     }
 
     public static void commitDeleteRemoteAsyncCallBack(IAsyncResult ar)
     {
-        // Alternative 2: Use the callback to get the return value
-        commitWriteRemoteAsyncDelegate del = (commitWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
-        return;
+        commitDeleteRemoteAsyncDelegate del = (commitDeleteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        TransactionDTO assyncResult = del.EndInvoke(ar);
+        log.Info(assyncResult.clientID + " DELETE ::  Call Back Received - CommitDelete for transaction: " + assyncResult.transactionID);
+        if (assyncResult.success)
+        {
+            if (deleteQUORUM.ContainsKey(assyncResult.transactionID)) { deleteQUORUM[assyncResult.transactionID]++; }
+            else { deleteQUORUM.Add(assyncResult.transactionID, 1); }
+        }
+        return;    
     }
 
     public void delete(string filename)
@@ -375,39 +362,91 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         //1. Find out which meta server to call
         MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(filename)]);
+        log.Info(this.clientID + " DELETE ::  Meta-Server to Contact: " + Utils.whichMetaServer(filename));
 
         //2. If not available try next one
         //TODO
 
         //3. Invoke delete on meta server
+        log.Info(this.clientID + " DELETE ::  Sending create request to Meta-Server");
         FileHandler fh = mdi.delete(this.clientID, filename);
-
         if (fh == null) {
-            Console.WriteLine("[CLIENT  delete] Meta Server failed to delete!");
+            log.Info(this.clientID + " DELETE :: Meta Server doesn't have a reference of the file to delete!"); 
             return;
         }
+        log.Info(this.clientID + " DELETE ::  Received the File Handler of file: " + fh.filenameGlobal);
 
         //4. Contact data-server to prepare
+        log.Info(this.clientID + " DELETE ::  Initiating 2PC");
+        string transactionID = Utils.generateTransactionID(); 
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.prepareDelete(this.clientID, fh.dataServersFiles[dataServerPort]);
+            prepareDeleteRemoteAsyncDelegate RemoteDel = new prepareDeleteRemoteAsyncDelegate(di.prepareDelete);
+            AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.prepareDeleteRemoteAsyncCallBack);
+            TransactionDTO prepareDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(prepareDTO, RemoteCallback, null);
+            //di.prepareDelete(this.clientID, fh.dataServersFiles[dataServerPort]); SYNC
         }
+        log.Info(this.clientID + " DELETE ::  2PC 1st Phase - Prepare Create Assync Calls Sent");
+
+        while (true)
+        {
+            System.Threading.Thread.Sleep(1); // Wait 1ms to avoid that the second server receive a commit before a prepare
+
+            lock (deleteQUORUM)
+            {
+                if (deleteQUORUM.ContainsKey(transactionID)) //the fh.writeQuorum is the same as createQuorum
+                {
+                    if (deleteQUORUM[transactionID] >= fh.nbServers)
+                    {
+                        log.Info(this.clientID + " DELETE :: Reached necessary Quorum(TOTAL) of: " + fh.nbServers + " : number of machines that are prepared: " + deleteQUORUM[transactionID]);
+                        deleteQUORUM.Remove(transactionID);
+                        break;
+                    }
+                }
+            }
+        }
+
 
         //5. Contact data-servers to commit
+        transactionID = Utils.generateTransactionID(); //Generating new transaction ID for Commit
         foreach (string dataServerPort in fh.dataServersPorts)
         {
-
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.commitDelete(this.clientID, fh.dataServersFiles[dataServerPort]);
+            commitDeleteRemoteAsyncDelegate RemoteDel = new commitDeleteRemoteAsyncDelegate(di.commitDelete);
+            AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.commitDeleteRemoteAsyncCallBack);
+            TransactionDTO prepareDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(prepareDTO, RemoteCallback, null);
+            //di.commitDelete(this.clientID, fh.dataServersFiles[dataServerPort]); // SYNC
         }
+        log.Info(this.clientID + " DELETE ::  2PC 2nd Phase - Commit Delete Assync Calls Sent");
+
+        while (true)
+        {
+            System.Threading.Thread.Sleep(1); // Wair 1ms to avoid that the second server receive a commit before a prepare
+
+            lock (deleteQUORUM)
+            {
+                if (deleteQUORUM.ContainsKey(transactionID)) //Write Quorum is the same as Create on filehandler
+                {
+                    if (deleteQUORUM[transactionID] >= fh.nbServers)
+                    {
+                        log.Info(this.clientID + " DELETE :: Reached necessary Quorum(TOTAL) of: " + fh.nbServers + " : number of machines that are prepared to commit: " + deleteQUORUM[transactionID]);
+                        deleteQUORUM.Remove(transactionID);
+                        break;
+                    }
+                }
+            }
+        }
+
 
         //6. Tell metaserver to confirm deletion
         mdi.confirmDelete(this.clientID, fh, true);
+        //TODO if not there, tell another!
 
-        Console.WriteLine("[CLIENT  delete]  Success");
+        log.Info(this.clientID + " DELETE ::  Confirmation Sent to Meta-Data Server, operation complete");
         return;
-
     }
 
 
