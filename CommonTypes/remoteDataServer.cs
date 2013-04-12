@@ -18,8 +18,8 @@ public interface MyRemoteDataInterface
     byte[] read(string local_file_name, int semantic);                                  //SEMI-DONE (ignora a semantica)
     TransactionDTO prepareCreate(TransactionDTO dto);                                   //DONE
     TransactionDTO commitCreate(TransactionDTO dto);                                    //DONE
-    Boolean prepareDelete(string clientID, string local_file_name);                     //DONE
-    Boolean commitDelete(string clientID, string local_file_name);                      //DONE
+    TransactionDTO prepareDelete(TransactionDTO dto);                                   //DONE
+    TransactionDTO commitDelete(TransactionDTO dto);                                    //DONE
 
     //usado pelo meta-server
     Boolean transferFile(string filename, string address);                              //TODO (after checkpoint)
@@ -283,83 +283,106 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         return newDTO;
     }
 
-    public Boolean prepareDelete(string clientID, string local_file_name) {
-        
+
+
+
+
+
+
+
+
+
+    public TransactionDTO prepareDelete(TransactionDTO dto) {
+        TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameForDataServer);
+
         if (isfailed == true)
         {
-            Console.WriteLine("[DATA_SERVER: prepareDelete]    The server has failed!");
-            return false;
+            log.Info("DELETE :: PrepareDelete : This server is 'failed' can't comply with the request");
+            newDTO.success = false;
+            return newDTO;
         }
 
         if (isfrozen == true)
         {
-
-            Console.WriteLine("[DATA_SERVER: prepareDelete]    The server is frozen!");
-
+            log.Info("DELETE :: PrepareDelete : This server is 'frozen' can't comply with the request right now");
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
         }
 
-        //Verifica a existencia do ficheiro
-        if (!File.Exists(local_file_name))
+        // Verifica a existencia do ficheiro
+        if (!File.Exists(dto.filenameForDataServer))
         {
-            Console.WriteLine("[DATA_SERVER: prepareDelete]    The file doesn't exist!");
-            return false;
+            log.Info("DELETE :: PrepareDelete : The requested file in this Data-Server does not exist, NAME: " + dto.filenameForDataServer);
+            newDTO.success = false;
+            return newDTO;
         }
 
-        //Verifica se o ficheiro ja esta a ser alterado
-        if (mutationList.Find(f => f.filename == local_file_name) != null)
+        // Verifica se o ficheiro já esta a ser alterado
+        if (mutationList.Find(f => f.filename == dto.filenameForDataServer) != null)
         {
-            Console.WriteLine("[DATA_SERVER: prepareDelete]    File is being used by other process!");
-            return false;
+            log.Info("DELETE :: PrepareDelete : The requested file in this Data-Server is being manipulated by another process");
+            newDTO.success = false;
+            return newDTO;
         }
 
-        MutationListItem mutationEntry = new MutationListItem(local_file_name, clientID, null);
+        MutationListItem mutationEntry = new MutationListItem(dto.filenameForDataServer, dto.clientID, null);
         mutationList.Add(mutationEntry);
 
-        Console.WriteLine("[DATA_SERVER: PrepareDelete]    Success!");
-        return true; 
+        log.Info("DELETE :: PrepareDelete : Operation Complete");
+        newDTO.success = true;
+        return newDTO;
     }
 
-    public Boolean commitDelete(string clientID, string local_file_name) {
+    public TransactionDTO commitDelete(TransactionDTO dto) {
+        TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameForDataServer);
 
         if (isfailed == true)
         {
-            Console.WriteLine("[DATA_SERVER: commitDelete]    The server has failed!");
-            return false;
+            log.Info("DELETE :: CommitDelete : This server is 'failed' can't comply with the request");
+            newDTO.success = false;
+            return newDTO;
         }
 
         if (isfrozen == true)
         {
-
-            Console.WriteLine("[DATA_SERVER: commitDelete]    The server is frozen!");
-
+            log.Info("DELETE :: CommitDelete : This server is 'frozen' can't comply with the request right now");
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
         }
 
-        MutationListItem item = mutationList.Find(i => i.filename == local_file_name && i.clientID == clientID);
+        MutationListItem item = mutationList.Find(i => i.filename == dto.filenameForDataServer && i.clientID == dto.clientID);
         if (item == null)
         {
-            Console.WriteLine("[DATA_SERVER: commitDelete]    The file is not prepared!");
-            return false;
+            log.Info("DELETE :: CommitDelete : Client: " + dto.clientID + " is trying to commit without prepare");
+            newDTO.success = false;
+            return newDTO;
         }
 
         mutationList.Remove(item);
-        File.GetAccessControl(local_file_name);
-        File.Delete(local_file_name);
+        File.GetAccessControl(dto.filenameForDataServer);
+        File.Delete(dto.filenameForDataServer);
 
-        Console.WriteLine("[DATA_SERVER: commitDelete]    Success!");
-        return true; 
+        log.Info("DELETE :: CommitDelete : Operation Complete");
+        newDTO.success = true;
+        return newDTO;
     }
+
+
+
 
     //usado pelo meta-server
     public Boolean transferFile(string filename, string address) { return true; }
 
     //usado pelo data-server
     public Boolean receiveFile(string filename, byte[] file) { return true; }
+
+
+
+
+
+
 
     //usado pelo puppet-master
     public void freeze() {
