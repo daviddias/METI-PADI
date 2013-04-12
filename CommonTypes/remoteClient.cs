@@ -157,6 +157,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         //2. If not available, try next one
         //TODO
 
+
         //3. Get File-Handle
         log.Info(this.clientID + " CREATE ::  Sending create request to Meta-Server");
         FileHandler fh = mdi.create(this.clientID, filename, nbDataServers, readQuorum, writeQuorum);
@@ -166,13 +167,11 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             return;
         }
         log.Info(this.clientID + " CREATE ::  Received the File Handler of file: " + fh.filenameGlobal);
+
+
         
 
-        //4. Save File-Handle
-        //TODO - Implement a function to do this (also one to remove)
-
-
-        //5. Contact Data-Servers to Prepare
+        //4. Contact Data-Servers to Prepare
         log.Info(this.clientID + " CREATE ::  Initiating 2PC");
         string transactionID = Utils.generateTransactionID(); 
         foreach (string dataServerPort in fh.dataServersPorts)
@@ -204,7 +203,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             }
         }
 
-        //6. Contact Data-Servers to Commit
+        //5. Contact Data-Servers to Commit
         transactionID = Utils.generateTransactionID(); //Generating new transaction ID for Commit
         foreach (string dataServerPort in fh.dataServersPorts)
         {
@@ -236,13 +235,16 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             }
         }
 
+        //6. Save FileHandler
+        register.Add(fh);
+        
+
         //7. Tell Meta-Data Server to Confirm Creation 
         mdi.confirmCreate(this.clientID, filename, true); 
         //TODO need to check if this guy is still up!
         log.Info(this.clientID + " CREATE :: Confirmation Sent to Meta-Data Server, operation complete");
         return;
     }
-
 
 
     /*------------------------------------------------------------------------         
@@ -324,8 +326,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
      *-----------------------------------------------------------------------*/
 
     //Asynchronous calls delegates
-    //public delegate TransactionDTO prepareDeleteRemoteAsyncDelegate(string clientID, string local_file_name);
-    //public delegate TransactionDTO commitDeleteRemoteAsyncDelegate(string clientID, string local_file_name);
     public delegate TransactionDTO prepareDeleteRemoteAsyncDelegate(TransactionDTO dto);
     public delegate TransactionDTO commitDeleteRemoteAsyncDelegate(TransactionDTO dto);
 
@@ -462,8 +462,8 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     private static Dictionary<string, int> writeQUORUM;  //Key - Transaction ID ; int - number of responses
 
     // Delegates
-    public delegate TransactionDTO prepareWriteRemoteAsyncDelegate(string clientID, string local_file_name, byte[] byte_array);
-    public delegate TransactionDTO commitWriteRemoteAsyncDelegate(string clientID, string local_file_name);
+    public delegate TransactionDTO prepareWriteRemoteAsyncDelegate(TransactionDTO dto);
+    public delegate TransactionDTO commitWriteRemoteAsyncDelegate(TransactionDTO dto);
 
 
     // Callbacks
@@ -471,8 +471,13 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
         // Alternative 2: Use the callback to get the return value
         prepareWriteRemoteAsyncDelegate del = (prepareWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
-
+        TransactionDTO assyncResult = del.EndInvoke(ar);
+        log.Info(assyncResult.clientID + " WRITE ::  Call Back Received - PrepareWrite for transaction: " + assyncResult.transactionID);
+        if (assyncResult.success)
+        {
+            if (writeQUORUM.ContainsKey(assyncResult.transactionID)) { writeQUORUM[assyncResult.transactionID]++; }
+            else { writeQUORUM.Add(assyncResult.transactionID, 1); }
+        }
         return;
     }
 
@@ -480,8 +485,13 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
         // Alternative 2: Use the callback to get the return value
         commitWriteRemoteAsyncDelegate del = (commitWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
-        Console.WriteLine("\r\n**SUCCESS**: Result of the remote AsyncCallBack: " + del.EndInvoke(ar));
-
+        TransactionDTO assyncResult = del.EndInvoke(ar);
+        log.Info(assyncResult.clientID + " WRITE ::  Call Back Received - CommitWrite for transaction: " + assyncResult.transactionID);
+        if (assyncResult.success)
+        {
+            if (writeQUORUM.ContainsKey(assyncResult.transactionID)) { writeQUORUM[assyncResult.transactionID]++; }
+            else { writeQUORUM.Add(assyncResult.transactionID, 1); }
+        }
         return;
     }
 
@@ -490,51 +500,96 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
         FileHandler fh = null;
 
-        //1.Find if this client has this file opened
+        // 1.Find if this client has this file opened
         if (register.Count == 0 || !isOpen(register[reg].filenameGlobal))
         {
-            Console.WriteLine("[CLIENT  write]:  File is not yet opened!");
+            log.Info(this.clientID + " WRITE ::  File: " + register[reg].filenameGlobal + " is not open yet");
             return;
         }
-
-        Console.WriteLine("[CLIENT  write]:  Fucheiro ta aberto!");
-
         fh = register[reg];
-
-        //2. Find out which Meta-Server to Call
+        log.Info(this.clientID + " WRITE ::  File: " + register[reg].filenameGlobal + " is  open");
+        
+        //2. Find out which Meta-Server to Call 
         MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(fh.filenameGlobal)]);
-
+        log.Info(this.clientID + " WRITE ::  Meta-Server to Contact: " + Utils.whichMetaServer(fh.filenameGlobal));
 
         //3. If not available, try next one
         //TODO
 
-        //4. Cotact metaserver for write operation
+        //4. Contact metaserver for write operation
         if (mdi.write(this.clientID, fh) == null)
         {
-            Console.WriteLine("[CLIENT  write]  Metaserve did not gave permission to write!");
+            log.Info(this.clientID + " WRITE ::  Meta-Server didn't allow Write on File: " + Utils.whichMetaServer(fh.filenameGlobal));
             return;
         }
 
         //5. Contact Data-Servers to Prepare
+        log.Info(this.clientID + " WRITE ::  Iniciating 2PC for File: " + Utils.whichMetaServer(fh.filenameGlobal));
+        string transactionID = Utils.generateTransactionID();
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.prepareWrite(this.clientID, fh.dataServersFiles[dataServerPort], byteArray);
+            prepareWriteRemoteAsyncDelegate RemoteDel = new prepareWriteRemoteAsyncDelegate(di.prepareWrite);
+            AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.prepareWriteRemoteAsyncCallBack);
+            TransactionDTO prepareDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);
+            prepareDTO.filecontent = byteArray;
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(prepareDTO, RemoteCallback, null);
+            //di.prepareWrite(this.clientID, fh.dataServersFiles[dataServerPort], byteArray); //SYNC
+        }
+        log.Info(this.clientID + " WRITE ::  2PC 1st Phase Async Calls Sent");
+
+        while (true)
+        {
+            System.Threading.Thread.Sleep(1000); // Wait 1s to avoid that the second server receive a commit before a prepare
+
+            lock (writeQUORUM)
+            {
+                if (writeQUORUM.ContainsKey(transactionID)) //the fh.writeQuorum is the same as createQuorum
+                {
+                    if (writeQUORUM[transactionID] >= fh.writeQuorum)
+                    {
+                        log.Info(this.clientID + " WRITE :: Reached necessary Quorum(TOTAL) of: " + fh.writeQuorum + " : number of machines that are prepared: " + writeQUORUM[transactionID]);
+                        writeQUORUM.Remove(transactionID);
+                        break;
+                    }
+                }
+            }
         }
 
         //6. Contact Data-Servers to Commit
+        transactionID = Utils.generateTransactionID();
         foreach (string dataServerPort in fh.dataServersPorts)
         {
-
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            di.commitWrite(this.clientID, fh.dataServersFiles[dataServerPort]);
+            commitWriteRemoteAsyncDelegate RemoteDel = new commitWriteRemoteAsyncDelegate(di.commitWrite);
+            AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.commitWriteRemoteAsyncCallBack);
+            TransactionDTO prepareDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(prepareDTO, RemoteCallback, null);    
+            //di.commitWrite(this.clientID, fh.dataServersFiles[dataServerPort]); //SYNC
+        }
+
+        while (true)
+        {
+            System.Threading.Thread.Sleep(1000); // Wait 1s to avoid that the second server receive a commit before a prepare
+            lock (writeQUORUM)
+            {
+                if (writeQUORUM.ContainsKey(transactionID)) //the fh.writeQuorum is the same as createQuorum
+                {
+                    if (writeQUORUM[transactionID] >= fh.writeQuorum)
+                    {
+                        log.Info(this.clientID + " WRITE :: Reached necessary Quorum(TOTAL) of: " + fh.writeQuorum + " : number of machines that finished commit: " + writeQUORUM[transactionID]);
+                        writeQUORUM.Remove(transactionID);
+                        break;
+                    }
+                }
+            }
         }
 
 
         //7. Tell Meta-Data Server to Confirm Creation 
         mdi.confirmWrite(this.clientID, fh, true);
-
-        Console.WriteLine("[CLIENT  write]  Success");
+        //TODO make sure this is still up - Actually we can find the right one down here, doesn't need to be up there
+        log.Info(this.clientID + " WRITE ::  Operation Success on File: " + Utils.whichMetaServer(fh.filenameGlobal));
         return;
     }
 
