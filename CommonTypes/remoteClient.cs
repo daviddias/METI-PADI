@@ -39,7 +39,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     public string clientID;
         
     // File-Register and Byte-Array Register
-    public static List<FileHandler> register;                   
+    public static List<FileHandler> fileRegister;                   
     public static List<byte[]> byteArrayRegister = new List<byte[]>(10);
 
    
@@ -55,9 +55,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         this.metaServerPort[5] = metaServerPorts[2];
 
         byteArrayRegister = new List<byte[]>(10);
-        register = new List<FileHandler>(10);
+        fileRegister = new List<FileHandler>(10);
 
-        readQuorum = new Dictionary<string, int>();
+        readQUORUM = new Dictionary<string, List<TransactionDTO>>();
         writeQUORUM = new Dictionary<string,int>();
         createQUORUM = new Dictionary<string, int>();
         deleteQUORUM = new Dictionary<string, int>();
@@ -74,7 +74,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     /* File is open */
     private Boolean isOpen(string filename)
     {
-        foreach (FileHandler fh in register)
+        foreach (FileHandler fh in fileRegister)
             if (fh.filenameGlobal == filename) //!Not sure if the comparison works in C# -> Check it!
                 return true;
         return false;
@@ -83,7 +83,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     /* Get filehandler from register */
     private FileHandler getFileHandler(string filename)
     {
-        foreach (FileHandler fh in register)
+        foreach (FileHandler fh in fileRegister)
             if (fh.filenameGlobal == filename)
                 return fh;
         return null;
@@ -236,7 +236,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
 
         //6. Save FileHandler
-        register.Add(fh);
+        fileRegister.Add(fh);
         
 
         //7. Tell Meta-Data Server to Confirm Creation 
@@ -264,7 +264,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
 
         //2. Check if there aren't 10 files already opened
-        if (register.Count >= MAX_FILES_OPENED) {
+        if (fileRegister.Count >= MAX_FILES_OPENED) {
             Console.WriteLine("[CLIENT  open]:  Can't have 10 opened files at once!");
             return;
         }
@@ -279,7 +279,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
 
         //openFiles.Add(filename, filehandler);
-        register.Add(filehandler);
+        fileRegister.Add(filehandler);
         Console.WriteLine("[CLIENT  open]:  Success!");
         return;
     }
@@ -293,7 +293,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
         FileHandler filehandler = null;
         //1. Check if file is really open
-        foreach (FileHandler fh in register){
+        foreach (FileHandler fh in fileRegister){
             if (fh.filenameGlobal == filename){
                 filehandler = fh;
                 break;
@@ -312,7 +312,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
 
         //4. Remove from Open Files 
-        register.Remove(filehandler);
+        fileRegister.Remove(filehandler);
         Console.WriteLine("[CLIENT  close]:  Success!");
         return;
     }
@@ -501,13 +501,13 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         FileHandler fh = null;
 
         // 1.Find if this client has this file opened
-        if (register.Count == 0 || !isOpen(register[reg].filenameGlobal))
+        if (fileRegister.Count == 0 || !isOpen(fileRegister[reg].filenameGlobal))
         {
-            log.Info(this.clientID + " WRITE ::  File: " + register[reg].filenameGlobal + " is not open yet");
+            log.Info(this.clientID + " WRITE ::  File: " + fileRegister[reg].filenameGlobal + " is not open yet");
             return;
         }
-        fh = register[reg];
-        log.Info(this.clientID + " WRITE ::  File: " + register[reg].filenameGlobal + " is  open");
+        fh = fileRegister[reg];
+        log.Info(this.clientID + " WRITE ::  File: " + fileRegister[reg].filenameGlobal + " is  open");
         
         //2. Find out which Meta-Server to Call 
         MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(metaServerPort[Utils.whichMetaServer(fh.filenameGlobal)]);
@@ -610,38 +610,118 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
      *                                   READ
      *-----------------------------------------------------------------------*/
 
-    private static Dictionary<string, int> readQuorum; //String - Transaction ID ; int - Counter //TODO mudar para o Value ser um array de ints da dimensão nbservers, com as várias versões
+    // Delegates
+    public delegate TransactionDTO readRemoteAsyncDelegate(TransactionDTO dto);
+
+    private static Dictionary<string, List<TransactionDTO>> readQUORUM; //String - Transaction ID ; TransactionDTO
+
+    public static void ReadRemoteAsyncCallBack(IAsyncResult ar)
+    {
+        readRemoteAsyncDelegate del = (readRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        TransactionDTO assyncResult = del.EndInvoke(ar);
+        log.Info(assyncResult.clientID + " READ ::  Call Back Received - " + assyncResult.transactionID + " Success? -> " + assyncResult.success);
+        if (assyncResult.success) { 
+            if(readQUORUM.ContainsKey(assyncResult.transactionID)){
+                 readQUORUM[assyncResult.transactionID].Add(assyncResult); 
+            }
+            else{
+                List<TransactionDTO> ltdto = new List<TransactionDTO>();
+                ltdto.Add(assyncResult);
+                readQUORUM.Add(assyncResult.transactionID, ltdto);
+            }
+        }
+        return;
+    }
 
 
-    public void read(int reg, int semantics, int byteArray) {
-        //Console.WriteLine("[CLIENT  read]:  Chamou o read!");
-        byte[] content;
+    public void read(int fileRegisterIndex, int semantics, int byteArrayRegisterIndex) { 
+        log.Info(this.clientID + " READ :: Semantics - " + semantics.ToString());
         
         //1.Find if this client has this file opened
-        if (register.Count == 0 || !isOpen(register[reg].filenameGlobal))
+        if (fileRegister.Count == 0 || !isOpen(fileRegister[fileRegisterIndex].filenameGlobal))
         {
-            Console.WriteLine("[CLIENT  read]:  File is not yet opened!");
+            log.Info(this.clientID + " READ :: There is no file opened with that register - " + fileRegisterIndex);
             return;
         }
-        //Console.WriteLine("[CLIENT  read]:  O ficheiro esta aberto!");
-
-        FileHandler fh = register[reg];
+        log.Info(this.clientID + " READ :: We are going to Read File - " + fileRegister[fileRegisterIndex].filenameGlobal);
+        
+        FileHandler fh = fileRegister[fileRegisterIndex];
 
         //3. Contact Data-Server to read
+        string transactionID = Utils.generateTransactionID(); 
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
-            content = di.read(fh.dataServersFiles[dataServerPort], semantics);
+            readRemoteAsyncDelegate RemoteDel = new readRemoteAsyncDelegate(di.read);
+            AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.ReadRemoteAsyncCallBack);
+            TransactionDTO readDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(readDTO, RemoteCallback, null);
+            //content = di.read(fh.dataServersFiles[dataServerPort], semantics); //SYNC
+        }
+        log.Info(this.clientID + " READ :: READ Assync Calls Sent");
 
-            if (content != null)
+
+        byte[] content = null; //File Content
+        while (true)
+        {
+            System.Threading.Thread.Sleep(1); // Wait 1ms to avoid that the second server receive a commit before a prepare
+
+            lock (readQUORUM)
             {
-                Console.WriteLine("[CLIENT  read]:  Success! " + System.Text.Encoding.Default.GetString(content));
-                byteArrayRegister.Insert(byteArray, content);
-                return;
+                //log.Info("INSIDE LOCK");
+                if (readQUORUM.ContainsKey(transactionID)) //the fh.writeQuorum is the same as createQuorum
+                {
+                    //log.Info("READQUORUM HAS TRANSACTION WITH TRANSATION ID CORRECT");
+                    //log.Info("COUNT: " + readQUORUM[transactionID].Count());
+                    //log.Info("READQUORUM expected: " + fh.readQuorum);
+                    if (readQUORUM[transactionID].Count() >= fh.readQuorum)
+                    {
+                        log.Info(this.clientID + " READ :: Reached necessary Quorum of: " + fh.readQuorum + " : number of machines that are prepared: " + readQUORUM[transactionID].Count);
+
+                        long higherVersion = 0L;
+                        TransactionDTO bufferDTO = null;
+                        foreach (TransactionDTO loopDTO in readQUORUM[transactionID])
+                        {
+                            if (higherVersion <= loopDTO.version)
+                            {
+                                bufferDTO = loopDTO;
+                                higherVersion = loopDTO.version;
+                            }
+                        }
+                        if (semantics == DEFAULT) //Gives the most recent version of the Quorum
+                        {
+                            content = bufferDTO.filecontent;
+                            log.Info(this.clientID + " READ ::  DEFAULT - Higher Version: " + higherVersion);
+                            fh.version = higherVersion;
+                        }
+                        if (semantics == MONOTONIC) //Gives the most recent version of the Quorum, if this one is older than last read, return last read instead
+                        {
+                            if (higherVersion < fh.version) 
+                            {
+                                //Como é menor: 
+                                //1. Verificar se temos já no byteArrayRegister ou se está a null  
+                                //2. Se estiver a null usar o do loop(porque nunca tinha lido) 
+                                //3. Se não estiver a null usar o que esta no byteArrayRegister
+                                //Nota: Isto causa o problema que se tentar-mos usar um byteArrayRegister já usado, ele vai achar pode vir a achar que esse é o tal content que tem mais actualizado, corrigir isto para a versão beta
+                                if (byteArrayRegister[byteArrayRegisterIndex] == null) { content = bufferDTO.filecontent; }
+                                else { content = byteArrayRegister[byteArrayRegisterIndex]; }
+                            }
+                            else
+                            {
+                                content = bufferDTO.filecontent;  //sacar o conteúdo do loopDTO e actualizar o filehandler
+                                fh.version = higherVersion;
+                            }
+                            log.Info(this.clientID + " READ ::  MONOTONIC - Version: " + higherVersion);
+                        }
+                        readQUORUM.Remove(transactionID);
+                        break;
+                    }
+                }
             }
         }
+        byteArrayRegister.Insert(byteArrayRegisterIndex, content); //update byte register
 
-        Console.WriteLine("[CLIENT  read]:  Data Server could not read the file!");
+        log.Info(this.clientID + " READ :: Operation complete, file:  " + fileRegister[fileRegisterIndex].filenameGlobal + " has this content: \n\r " + System.Text.Encoding.Default.GetString(content));
         return;
     }
 }
