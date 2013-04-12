@@ -12,7 +12,7 @@ using System.Runtime.Remoting.Messaging;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using log4net;
-using System.Xml;
+
 
 
 
@@ -71,6 +71,13 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             fileTables[i] = new Dictionary<string, FileHandler>();
 
         log.Info("Meta-Data Server is up!");
+
+        string path = Environment.ExpandEnvironmentVariables("%HOMEDRIVE%%HOMEPATH%\\PADI-FS\\") + System.Diagnostics.Process.GetCurrentProcess().ProcessName + "-" + whoAmI;
+
+        if (!Directory.Exists(path))
+            Directory.CreateDirectory(path);
+
+        Directory.SetCurrentDirectory(path);
     }
 
     public MyRemoteMetaDataObject(string _localPort, string _aMetaServerPort, string _bMetaServerPort, string[] _dataServersPorts){
@@ -91,6 +98,13 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
                 && Convert.ToInt32(localPort) > Convert.ToInt32(bMetaServerPort))
             { whoAmI = 1; }
             else { whoAmI = 2; }
+
+            string path = Environment.ExpandEnvironmentVariables("%HOMEDRIVE%%HOMEPATH%\\PADI-FS\\") + System.Diagnostics.Process.GetCurrentProcess().ProcessName + "-" + whoAmI;
+
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+
+            Directory.SetCurrentDirectory(path);
 
         log.Info("Meta Server " + whoAmI + " is up!");
     }
@@ -408,16 +422,46 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     }
 
     public void recover() {
-        if (isfailed == false)
+        //if (isfailed == false)
+        //{
+        //    log.Info("[METASERVER: recover]    The server was not failed!");
+        //    return;
+        //}
+
+        for (int i = 0; i < 6; i++)
         {
-            log.Info("[METASERVER: recover]    The server was not failed!");
-            return;
+            StreamReader sw = new StreamReader("backup-m" + whoAmI + "_table-" + i);
+            string s = sw.ReadLine();
+            while(!s.Equals(""))
+            {
+                char p = '|';
+                string[] parsed = s.Split(p);
+
+                string filenameGlobal = parsed[0];
+                long fileSize = long.Parse(parsed[1]);
+                int nbServers = int.Parse(parsed[2]);
+                string[] dataPorts = parsed[3].Split(':');
+                int readQuorum = int.Parse(parsed[4]);
+                int writeQuorum = int.Parse(parsed[5]);
+                long nFileAccess = long.Parse(parsed[6]);
+
+
+                string[] dataFileNames = parsed[7].Split(':');
+                string[] localNames = new string[nbServers];
+                for (int j = 0; j < nbServers; j++)
+                    localNames[j] = dataFileNames[i].Split('>')[1];
+
+
+                FileHandler fh = new FileHandler(filenameGlobal, fileSize, nbServers, dataPorts, localNames, readQuorum, writeQuorum, nFileAccess);
+                fh.version =long.Parse(parsed[8]);
+                fh.isOpen = bool.Parse(parsed[9]);
+
+                fileTables[i].Add(filenameGlobal, fh);
+
+                s = sw.ReadLine();
+                }
+                sw.Close();
         }
-
-
-
-        isfailed = false;
-        return;
     }
 
     public void dump()
@@ -465,7 +509,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
     public void sendUpdate()
     {
-        // get other 
         MyRemoteMetaDataInterface[] mdi = new MyRemoteMetaDataInterface[2];
         mdi[0] = Utils.getRemoteMetaDataObj(aMetaServerPort);
         mdi[1] = Utils.getRemoteMetaDataObj(bMetaServerPort);
@@ -477,15 +520,84 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
             log.Info(" UPDATE SENDED::  Updated metadata table sended in background to others Metadata Servers");
         }
+
+        // save the filetables to disk on a file
+
+        for (int i = 0; i < 6; i++)
+        {
+            File.Create("backup-m" + whoAmI + "_table-" + i).Close();
+            StreamWriter sw = new StreamWriter("backup-m" + whoAmI + "_table-" + i);
+            string s = "";
+            foreach (FileHandler fh in fileTables[i].Values)
+            {
+                s = (fh.filenameGlobal + "|" + fh.fileSize + "|" + fh.nbServers + "|");
+                for (int j = 0; j < fh.nbServers; j++)
+                {
+                    s += fh.dataServersPorts[j];
+                    if (j != fh.nbServers - 1)
+                        s += ":";
+                    else
+                        s += "|";
+                }
+                s += (fh.readQuorum + "|" + fh.writeQuorum + "|" + fh.nFileAccess + "|");
+                for (int j = 0; j < fh.nbServers; j++)
+                {
+                    s += fh.dataServersPorts[j] + ">" + fh.dataServersFiles[fh.dataServersPorts[j]];
+                    if (j != fh.nbServers - 1)
+                        s += ":";
+                    else
+                        s += "|";
+                }
+                s += fh.version + "|";
+                s += fh.isOpen;
+                sw.WriteLine(s);
+            }
+            sw.Close();
+        }
     }
 
     public void receiveUpdate(Dictionary<string, FileHandler>[] newFileTable)
     {
         for (int i = 0; i < 6; i++)
-            if (i != whoAmI * 2 && i != whoAmI * 2 + 1) // dont update the files that it is responsible
+            if (i != whoAmI * 2 || i != whoAmI * 2 + 1) // dont update the files that it is responsible
                 fileTables[i] = newFileTable[i];
+
+        // save the filetables to disk on a file
+
+        for (int i = 0; i < 6; i++)
+        {
+            File.Create("backup-m" + whoAmI + "_table-" + i).Close();
+            StreamWriter sw = new StreamWriter("backup-m" + whoAmI + "_table-" + i);
+            string s = "";
+            foreach (FileHandler fh in fileTables[i].Values)
+            {
+                s = (fh.filenameGlobal + "|" + fh.fileSize + "|" + fh.nbServers + "|");
+                for (int j = 0; j < fh.nbServers; j++)
+                {
+                    s += fh.dataServersPorts[j];
+                    if (j != fh.nbServers - 1)
+                        s += ":";
+                    else
+                        s += "|";
+                }
+                s += (fh.readQuorum + "|" + fh.writeQuorum + "|" + fh.nFileAccess + "|");
+                for (int j = 0; j < fh.nbServers; j++)
+                {
+                    s += fh.dataServersPorts[j] + ">" + fh.dataServersFiles[fh.dataServersPorts[j]];
+                    if (j != fh.nbServers - 1)
+                        s += ":";
+                    else
+                        s += "|";
+                }
+                s += fh.version + "|";
+                s += fh.isOpen;
+                sw.WriteLine(s);
+            }
+            sw.Close();
+        }
 
         log.Info(" UPDATE RECEIVED::  Updated metadata table sended in background to others Metadata Servers");
     }
 
+    
 }
