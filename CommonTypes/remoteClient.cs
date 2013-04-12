@@ -19,7 +19,8 @@ public interface remoteClientInterface {
     void delete(string filename);                                                       //todo
     void write(int reg, byte[] byteArray);                                              //DONE
     void write(int reg, int byteArray);                                                 //DONE
-    void read(int reg, int semantics, int byteArray);                                    //DONE
+    void read(int reg, int semantics, int byteArray);                                   //DONE
+    void exeScript(List<string> commands);
     string metodoOla(); //testing communication
 }
 
@@ -715,5 +716,50 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         log.Info(this.clientID + " READ :: Operation complete, file:  " + fileRegister[fileRegisterIndex].filenameGlobal + " has this content: \n\r " + System.Text.Encoding.Default.GetString(content));
         return;
+    }
+
+
+    public void exeScript(List<string> commands)
+    {
+        foreach (string line in commands)
+        {
+            if (line.StartsWith("#"))
+                continue;
+
+            String[] p = { " ", "\t", ", " };
+            string[] parsed = line.Split(p, StringSplitOptions.None);
+
+            switch (parsed[0])
+            {
+                case "CREATE": create(parsed[2], Convert.ToInt32(parsed[3]), Convert.ToInt32(parsed[4]), Convert.ToInt32(parsed[5])); break;
+                case "DELETE": delete(parsed[2]); break;
+                case "OPEN": open(parsed[2]); break;
+                case "CLOSE": close(parsed[2]); break;
+                case "READ":
+                    int DEFAULT = 1;
+                    int MONOTONIC = 2;
+                    int semantic;
+                    switch (parsed[3])
+                    {
+                        case "default": semantic = DEFAULT; break;
+                        case "monotonic": semantic = MONOTONIC; break;
+                        default: semantic = DEFAULT; break;
+                    }
+                    read(Convert.ToInt32(parsed[2]), semantic, Convert.ToInt32(parsed[4])); break;
+                case "WRITE":
+                    if (parsed[3].StartsWith("\""))
+                    {
+                        for (int i = 4; i < parsed.Length; i++)
+                            parsed[3] += " " + parsed[i];
+                        Byte[] bytes = System.Text.Encoding.UTF8.GetBytes(parsed[3]);
+                        write(Convert.ToInt32(parsed[2]), bytes);
+                    }
+                    else
+                    {
+                        write(Convert.ToInt32(parsed[2]), Convert.ToInt32(parsed[3]));
+                    }
+                    break;
+            }
+        }
     }
 }

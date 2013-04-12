@@ -29,6 +29,7 @@ class MetaDataServer{
         IDictionary props = new Hashtable();
         //props["port"] = 8081;
         props["port"] = thisMetaServerPort;
+        props["name"] = thisMetaServerPort;
         
         TcpChannel channel = new TcpChannel(props, null, provider);
         ChannelServices.RegisterChannel(channel, false);

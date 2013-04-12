@@ -12,7 +12,8 @@ using System.Runtime.Remoting.Messaging;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using log4net;
-
+using System.Collections;
+using System.Runtime.Serialization.Formatters;
 
 
 
@@ -205,11 +206,11 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     {
         FileHandler fh;
         //1. Is MetaServer Able to Respond (Fail)
-        if (isfailed)
-        {
-            log.Info("[METASERVER: create]    The server has is on 'fail'!");
-            return null;
-        }
+        //if (isfailed)
+        //{
+        //    log.Info("[METASERVER: create]    The server has is on 'fail'!");
+        //    return null;
+        //}
 
         //2. Does the file already exists? 
         if (fileTables[Utils.whichMetaServer(filename)].ContainsKey(filename))
@@ -414,7 +415,17 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             return;
         }
 
-
+        IChannel[] defaultTCPChannel = ChannelServices.RegisteredChannels;
+        for (int channelCount = 0; channelCount < defaultTCPChannel.Length; channelCount++)
+        {
+            //Locate My registerd channel
+            if (defaultTCPChannel[channelCount].ChannelName == localPort)
+            {
+                //Release(Unregister) the Channel assigned to this Instance
+                ChannelServices.UnregisterChannel(defaultTCPChannel[channelCount]);
+                break;
+            }
+        }
 
         log.Info("[METASERVER: fail]    Success!");
         return;
@@ -426,6 +437,15 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //    log.Info("[METASERVER: recover]    The server was not failed!");
         //    return;
         //}
+
+        BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
+        provider.TypeFilterLevel = TypeFilterLevel.Full;
+        IDictionary props = new Hashtable();
+        //props["port"] = 8081;
+        props["port"] = localPort;
+        props["name"] = localPort;
+        TcpChannel channel = new TcpChannel(props, null, provider);
+        ChannelServices.RegisterChannel(channel, false);
 
         for (int i = 0; i < 6; i++)
         {
