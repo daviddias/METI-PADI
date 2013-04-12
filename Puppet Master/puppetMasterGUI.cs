@@ -36,9 +36,9 @@ namespace Puppet_Master
         int nbDataServers;
         int nbClients;
 
-        String[] listOfDataServerPorts;
+        String[] listOfDataServerPorts = new String[1];
         String[] listOfMetaServerPorts;
-        String[] listOfClientPorts;
+        String[] listOfClientPorts = new String[1];
 
         // Dictonary of Running Processes Key=processID (e.g. c-1) Value=Process
         public Dictionary<string, Process> runningProcesses = new Dictionary<string, Process>();
@@ -237,7 +237,10 @@ namespace Puppet_Master
         {
             // is already checked before call this if the process is already started
 
-            int serverNum = int.Parse(process[2].ToString());
+            int processNum = int.Parse(process[2].ToString());
+
+            this.listOfDataServerPorts[0] = firstDataServerPort.ToString();
+            this.listOfClientPorts[0] = firstClientPort.ToString();
 
 
             // Metadata Servers
@@ -248,17 +251,26 @@ namespace Puppet_Master
 
                 string listOfMetas = (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 2).ToString();
                 string meta = listOfMetas;
-                switch (serverNum)
+                switch (processNum)
                 {
                     case 0: meta = (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 2).ToString(); break;
                     case 1: meta = (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 2).ToString(); break;
                     case 2: meta = (firstMetaServerPort + 2).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString(); break;
                 }
 
-                runningProcesses.Add("m-" + serverNum, new Process());
-                runningProcesses["m-" + serverNum].StartInfo.Arguments = meta + " " + listOfDataServerPorts;
-                runningProcesses["m-" + serverNum].StartInfo.FileName = metaServerPath;
-                runningProcesses["m-" + serverNum].Start();
+                runningProcesses.Add("m-" + processNum, new Process());
+
+                string dports = "";
+                for (int i = 0; i < listOfDataServerPorts.Length; i++)
+                {
+                    dports += listOfDataServerPorts[i];
+                    if (i != (listOfDataServerPorts.Length - 1))
+                        dports += " ";
+                }
+
+                runningProcesses["m-" + processNum].StartInfo.Arguments = meta + " " + dports;
+                runningProcesses["m-" + processNum].StartInfo.FileName = metaServerPath;
+                runningProcesses["m-" + processNum].Start();
                 System.Threading.Thread.Sleep(100);
 
                 this.listOfMetaServerPorts = listOfMetas.Split(' ');
@@ -272,28 +284,42 @@ namespace Puppet_Master
                 String dataServerPath = Environment.CurrentDirectory.Replace("Puppet Master", "Data-Server");
                 dataServerPath += "/Data-Server.exe";
 
-                runningProcesses.Add("d-" + serverNum, new Process());
-                runningProcesses["d-" + serverNum].StartInfo.Arguments = (firstDataServerPort + serverNum).ToString() + " " + serverNum;
-                runningProcesses["d-" + serverNum].StartInfo.FileName = dataServerPath;
-                runningProcesses["d-" + serverNum].Start();
+                runningProcesses.Add("d-" + processNum, new Process());
+                runningProcesses["d-" + processNum].StartInfo.Arguments = (firstDataServerPort + processNum).ToString() + " " + processNum;
+                runningProcesses["d-" + processNum].StartInfo.FileName = dataServerPath;
+                runningProcesses["d-" + processNum].Start();
                 Console.WriteLine("Data-Server Started");
                 System.Threading.Thread.Sleep(1000);
 
-                String[] dataPorts = null;
-                if (this.listOfDataServerPorts == null || this.listOfDataServerPorts.Length < serverNum)
+                String[] dataPorts = this.listOfDataServerPorts;
+
+                if (this.listOfDataServerPorts.Length <= processNum)
                 {
-                    dataPorts = new String[serverNum+1];
-                    if(this.listOfDataServerPorts != null)
-                        this.listOfDataServerPorts.CopyTo(dataPorts, 0);
-                    dataPorts[serverNum] = (firstDataServerPort + serverNum).ToString();
+                    dataPorts = new String[processNum+1];
+                    this.listOfDataServerPorts.CopyTo(dataPorts, 0);
                 }
+                dataPorts[processNum] = (firstDataServerPort + processNum).ToString();
                 this.listOfDataServerPorts = dataPorts;
             }
 
             // Client
             if (process.StartsWith("c-"))
             {
-                Console.Write(process);
+                String clientPath = Environment.CurrentDirectory.Replace("Puppet Master", "Client");
+                clientPath += "/Client.exe";
+                runningProcesses.Add("c-" + processNum, new Process());
+                runningProcesses["c-" + processNum].StartInfo.Arguments = (firstClientPort + processNum).ToString() + " " + ("c-" + processNum + " ") + this.listOfMetaServerPorts[0] + " " + this.listOfMetaServerPorts[1] + " " + this.listOfMetaServerPorts[2];
+                runningProcesses["c-" + processNum].StartInfo.FileName = clientPath;
+                runningProcesses["c-" + processNum].Start();
+
+                String[] cliPorts = this.listOfClientPorts;
+                if (this.listOfClientPorts.Length < processNum)
+                {
+                    cliPorts = new String[processNum + 1];
+                    this.listOfClientPorts.CopyTo(cliPorts, 0);
+                }
+                cliPorts[processNum] = (firstClientPort + processNum).ToString();
+                this.listOfClientPorts = cliPorts;
             }
         }
 

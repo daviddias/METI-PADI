@@ -32,6 +32,8 @@ public interface MyRemoteMetaDataInterface{
     FileHandler write(string clientID, FileHandler filehandler);
     void confirmWrite(string clientID, FileHandler filehander, Boolean wrote);
     void receiveUpdate(Dictionary<string, FileHandler>[] fileTable);
+    void receiveAlive(string port);
+
 
     //usado pelo Puppet-Master
     void fail();
@@ -57,7 +59,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     static string aMetaServerPort;
     static string bMetaServerPort;
     static int whoAmI; //0, 2 ou 4 to identify which Meta-Server it is 
-    static string[] dataServersPorts;
+    static List<string> dataServersPorts = new List<string>();
     static Boolean isfailed;
 
     //Array of fileTables containing file Handlers
@@ -86,7 +88,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         localPort = _localPort;
         aMetaServerPort = _aMetaServerPort;
         bMetaServerPort = _bMetaServerPort;
-        dataServersPorts = _dataServersPorts;
+
+        for (int i = 0; i < _dataServersPorts.Length; i++)
+            dataServersPorts.Add(_dataServersPorts[i]);
 
         for (int i = 0; i < 6; i++)
             fileTables[i] = new Dictionary<string, FileHandler>();
@@ -221,7 +225,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         //3. Decide where the fill will be hosted
         //3.1 There are enought Data Servers in the system to meet the required replication?
-        if (nbServers > dataServersPorts.Length)
+        if (nbServers > dataServersPorts.Count)
         {
             log.Info("[METASERVER: create]    There aren't enought Data Servers to meet the required replication");
             return null; //TODO return exception here! 
@@ -481,6 +485,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
                 }
                 sw.Close();
         }
+
+        // TODO: Get filetables from other metaservers on recover
     }
 
     public void dump()
@@ -618,5 +624,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         log.Info(" UPDATE RECEIVED::  Updated metadata table sended in background to others Metadata Servers");
     }
 
-    
+    public void receiveAlive(string port)
+    {
+        if (!dataServersPorts.Contains(port))
+            dataServersPorts.Add(port);
+    }
 }

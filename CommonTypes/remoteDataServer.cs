@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using CommonTypes;
 
 public interface MyRemoteDataInterface
 {
@@ -65,6 +66,14 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     //Lista de Ficheiros Mutantes
     public static List<MutationListItem> mutationList;
 
+    // first port metaserver (hardcoded)
+    public static int firstMetaserverPort = 8000;
+
+
+    public static int firstDataServerPort = 9000;
+
+    public static int myNumber;
+
     //Construtor
     public MyRemoteDataObject(int dataServerNumber)
     {
@@ -78,6 +87,8 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         Directory.SetCurrentDirectory(path);
         log.Info("Data Server is up!");
         log.Info(Directory.GetCurrentDirectory());
+
+        myNumber = dataServerNumber;
     }
 
     //Metodos auxiliares
@@ -407,10 +418,11 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
     public void unfreeze() {
 
-        if (isfrozen == false){
-            Console.WriteLine("[DATA_SERVER: unfreeze]    The server was not frozen!");
-            return;
-        }
+        //if (isfrozen == false)
+        //{
+        //    Console.WriteLine("[DATA_SERVER: unfreeze]    The server was not frozen!");
+        //    return;
+        //}
 
         isfrozen = false;
         if (!Monitor.IsEntered(mutationList))
@@ -418,15 +430,15 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         Monitor.PulseAll(mutationList);
         Monitor.Exit(mutationList);
+        imAlive();
+
         Console.WriteLine("[DATA_SERVER: unfreeze]    Sucess!");
         return;
     }
 
     public void fail() {
 
-        if (isfrozen == true){
-            Console.WriteLine("[DATA_SERVER: fail]    Cannot fail while server is frozen!");
-        }
+        
 
         isfailed = true;
         Console.WriteLine("[DATA_SERVER: faile]    Success!");
@@ -434,13 +446,32 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     }
 
     public void recover() {
-        if (isfailed == false)
-        {
-            Console.WriteLine("[DATA_SERVER: recover]    The server was not failed!");
-            return;
-        }
+        //if (isfailed == false)
+        //{
+        //    Console.WriteLine("[DATA_SERVER: recover]    The server was not failed!");
+        //    return;
+        //}
         isfailed = false;
+        imAlive();
         Console.WriteLine("[DATA_SERVER: recover]    Success!");
         return;
     }
+
+    private void imAlive()
+    {
+        MyRemoteMetaDataInterface[] mdi = new MyRemoteMetaDataInterface[3];
+        for(int i = 0; i < 3; i++)
+            mdi[i] = Utils.getRemoteMetaDataObj((firstMetaserverPort + i).ToString());
+
+        for (int i = 0; i < 3; i++)
+        {
+            UpdateRemoteAsyncDelegate RemoteUpdate = new UpdateRemoteAsyncDelegate(mdi[i].receiveAlive);
+            IAsyncResult RemAr = RemoteUpdate.BeginInvoke((firstDataServerPort + myNumber).ToString(), null, null);
+
+            log.Info(" UPDATE SENDED::  Updated metadata table sended in background to others Metadata Servers");
+        }
+    }
+
+    /* delegates */
+    public delegate void UpdateRemoteAsyncDelegate(string port);
 }
