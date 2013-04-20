@@ -16,23 +16,23 @@ public interface MyRemoteDataInterface
     //usado pelo cliente
     TransactionDTO prepareWrite(TransactionDTO dto);                                    //DONE
     TransactionDTO commitWrite(TransactionDTO dto);                                     //DONE
-    TransactionDTO read(TransactionDTO dto);                                  //SEMI-DONE (ignora a semantica)
+    TransactionDTO read(TransactionDTO dto);                                            //DONE
     TransactionDTO prepareCreate(TransactionDTO dto);                                   //DONE
     TransactionDTO commitCreate(TransactionDTO dto);                                    //DONE
     TransactionDTO prepareDelete(TransactionDTO dto);                                   //DONE
     TransactionDTO commitDelete(TransactionDTO dto);                                    //DONE
 
     //usado pelo meta-server
-    Boolean transferFile(string filename, string address);                              //TODO (after checkpoint)
+    TransactionDTO transferFile(TransactionDTO dto, string address);                    //PENDING 
 
     //usado pelo data-server
-    Boolean receiveFile(string filename, byte[] file);                                  //TODO (after checkpoint)
+    TransactionDTO receiveFile(TransactionDTO dto);                                     //TODO (after checkpoint)
 
     //usado pelo puppet-master
-    void freeze();                                                                   //DONE
-    void unfreeze();                                                                 //DONE
-    void fail();                                                                     //DONE
-    void recover();                                                                  //DONE
+    void freeze();                                                                      //DONE
+    void unfreeze();                                                                    //DONE
+    void fail();                                                                        //DONE
+    void recover();                                                                     //DONE
 }
 
 public class MutationListItem {
@@ -391,11 +391,119 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
 
 
-    //usado pelo meta-server
-    public Boolean transferFile(string filename, string address) { return true; }
+    /*------------------------------------------------------------------------         
+     *                           TRANSFER FILES
+     *-----------------------------------------------------------------------*/
+
+
+    public TransactionDTO transferFile(TransactionDTO dto, string address) {
+        
+        TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameForDataServer);
+
+        // this method is limited to 2^32 byte files (4.2 GB)
+        byte[] bytesRead = null;
+
+        if (isfailed == true)
+        {
+            log.Info("TRANSFER :: TransferFile : This server is 'failed' can't comply with the request");
+            newDTO.success = false;
+            return newDTO;
+        }
+
+        if (isfrozen == true)
+        {
+            log.Info("TRANSFER :: transferFile : This server is 'frozen' can't comply with the request right now");
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
+        }
+
+        // Verifica a existencia do ficheiro
+        if (!File.Exists(dto.filenameForDataServer))
+        {
+            log.Info("TRANSFER :: transferFile : The requested file in this Data-Server does not exist, NAME: " + dto.filenameForDataServer);
+            newDTO.success = false;
+            return newDTO;
+        }
+
+        // Verifica se o ficheiro já esta a ser alterado
+        if (mutationList.Find(f => f.filename == dto.filenameForDataServer) != null)
+        {
+            log.Info("TRANSFER :: transferFile : The requested file in this Data-Server is being manipulated by another process");
+            newDTO.success = false;
+            return newDTO;
+        }
+
+        string port = Utils.getPortOfAddress(address);
+
+        FileStream fs;
+
+   
+        fs = File.OpenRead(dto.filenameForDataServer);
+        bytesRead = new byte[fs.Length];
+        fs.Read(bytesRead, 0, Convert.ToInt32(fs.Length));
+        fs.Close();
+        log.Info("TRANSFER :: transferFile : Bytes from file to send were read successfully!");
+
+        dto.filecontent = bytesRead;
+
+        MyRemoteDataInterface di = Utils.getRemoteDataServerObj(port);
+        newDTO.success = di.receiveFile(dto).success;
+        log.Info("TRANSFER :: transferFile : Operation Successful!");
+
+        return newDTO;
+    }
 
     //usado pelo data-server
-    public Boolean receiveFile(string filename, byte[] file) { return true; }
+    public TransactionDTO receiveFile(TransactionDTO dto) {
+        TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameForDataServer);
+
+        if (isfailed == true)
+        {
+            log.Info("TRANSFER :: receiveFile : This server is 'failed' can't comply with the request");
+            newDTO.success = false;
+            return newDTO;
+        }
+
+        if (isfrozen == true)
+        {
+            log.Info("TRANSFER :: receiveFile : This server is 'frozen' can't comply with the request right now");
+            Monitor.Enter(mutationList);
+            Monitor.Wait(mutationList);
+            Monitor.Exit(mutationList);
+        }
+
+        if (File.Exists(dto.filenameForDataServer))
+        {
+            MutationListItem item = mutationList.Find(i => i.filename == dto.filenameForDataServer);
+            if (item == null)
+            {
+                log.Info("TRANSFER :: receiveFile : Another process is mutating the file! receiveFile Failed!");
+                newDTO.success = false;
+                return newDTO;
+            }
+
+            log.Info("TRANSFER :: receiveFile : The file exists and it's is going to be overwritten!");
+            File.WriteAllBytes(dto.filenameForDataServer, dto.filecontent);
+            newDTO.success = true;
+            return newDTO;
+        }
+
+        if (!File.Exists(dto.filenameForDataServer))
+        {
+            log.Info("TRANSFER :: receiveFile : The file does not exist and it is going to be created!");
+            File.Create(dto.filenameForDataServer).Close();
+            File.WriteAllBytes(dto.filenameForDataServer, dto.filecontent);
+            newDTO.success = true;
+            return newDTO;
+        }
+
+        log.Info("TRANSFER :: receiveFile : ATENTION! Something went wrong receiving the file!");
+
+
+        newDTO.success = false;
+        return newDTO; 
+    }
 
 
 

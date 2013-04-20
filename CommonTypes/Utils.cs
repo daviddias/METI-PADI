@@ -22,7 +22,7 @@ public static class Utils
     }
 
 
-    public static string generateTransactionID() {
+    public string generateTransactionID() {
         var bytes = new byte[16];
         using (var rng = new RNGCryptoServiceProvider())
         {
@@ -34,6 +34,28 @@ public static class Utils
 
     }
 
+    public static string getPortOfAddress(string address)
+    {
+
+        string[] words = address.Split(':');
+        if (words.Count() != 3)
+        {
+            System.Console.WriteLine("[UTILS:  getPortOfAddress]    Malformed address");
+            return null;
+        }
+
+
+        string[] port = words[2].Split('/');
+
+        if (port.Count() != 2)
+        {
+            System.Console.WriteLine("[UTILS:  getPortOfAddress]    Malformed address");
+            return null;
+        }
+
+        return port[0];
+
+    }
 
     /************************************************************************
      *              Get Remote Object Reference Methods

@@ -55,6 +55,32 @@ public static class Utils
 
 
 
+    /************************************************************************
+     *              Parse port number from given address 
+     ************************************************************************/
+    public static string getPortOfAddress(string address)
+    {
+
+        string[] words = address.Split(':');
+        if (words.Count() != 3)
+        {
+            System.Console.WriteLine("[UTILS:  getPortOfAddress]    Malformed address");
+            return null;
+        }
+
+
+        string[] port = words[2].Split('/');
+
+        if (port.Count() != 2)
+        {
+            System.Console.WriteLine("[UTILS:  getPortOfAddress]    Malformed address");
+            return null;
+        }
+
+        return port[0];
+
+    }
+
 
     /************************************************************************
      *              Generate Unique Transactions ID 
