@@ -493,9 +493,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         FileHandler fh = null;
 
         // 1.Find if this client has this file opened
-        if (fileRegister.Count == 0 || !isOpen(fileRegister[reg].filenameGlobal))
+        if (fileRegister.Count == 0 || reg > fileRegister.Count || !isOpen(fileRegister[reg].filenameGlobal))
         {
-            log.Info(this.clientID + " WRITE ::  File: " + fileRegister[reg].filenameGlobal + " is not open yet");
+            log.Info(this.clientID + " WRITE ::  File: with register " + reg + " is not open yet");
             return;
         }
         fh = fileRegister[reg];
@@ -626,7 +626,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         log.Info(this.clientID + " READ :: Semantics - " + semantics.ToString());
         
         //1.Find if this client has this file opened
-        if (fileRegister.Count == 0 || !isOpen(fileRegister[fileRegisterIndex].filenameGlobal))
+        if (fileRegister.Count == 0 || fileRegisterIndex > fileRegister.Count || !isOpen(fileRegister[fileRegisterIndex].filenameGlobal))
         {
             log.Info(this.clientID + " READ :: There is no file opened with that register - " + fileRegisterIndex);
             return;
