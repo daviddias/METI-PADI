@@ -229,7 +229,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         if (nbServers > dataServersPorts.Count)
         {
             log.Info("[METASERVER: create]    There aren't enought Data Servers to meet the required replication");
-            return null; //TODO return exception here! 
+            fh = new FileHandler(filename, 0, 0, new string[0], new string[0], readQuorum, writeQuorum, 1); // if there aren't enough data servers meta server sends always nbServer = 0 
+            return fh;
         }
         
         //3.2 Select the first enougths DataServers to store the data - DUMB WAY

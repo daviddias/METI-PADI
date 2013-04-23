@@ -313,7 +313,7 @@ namespace Puppet_Master
                 runningProcesses["c-" + processNum].Start();
 
                 String[] cliPorts = this.listOfClientPorts;
-                if (this.listOfClientPorts.Length < processNum)
+                if (this.listOfClientPorts.Length <= processNum)
                 {
                     cliPorts = new String[processNum + 1];
                     this.listOfClientPorts.CopyTo(cliPorts, 0);

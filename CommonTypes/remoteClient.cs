@@ -8,7 +8,9 @@ using System.Runtime.Remoting.Messaging;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
 using System.Net.Sockets;
+using System.Threading;
 using log4net;
+using CommonTypes;
 
 
 public interface remoteClientInterface { 
@@ -24,7 +26,6 @@ public interface remoteClientInterface {
     string metodoOla(); //testing communication
 }
 
-
 public class remoteClient : MarshalByRefObject, remoteClientInterface
 {
     private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
@@ -32,7 +33,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     // Atributes
     public string clientID;
     public string[] metaServerPorts = new string[6];
-    
     
     // File-Register and Byte-Array Register
     public static List<FileHandler> fileRegister;                   
@@ -151,10 +151,10 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         //---TODO--- Verificar se é possível criar (aka: se há Data-Servers suficientes para o request, caso não haja, temos de Bloquear
         log.Info(this.clientID + " CREATE ::  Sending create request to Meta-Server");
         FileHandler fh = mdi.create(this.clientID, filename, nbDataServers, readQuorum, writeQuorum);
-        if (fh == null)
+        while (fh.nbServers == 0) // if there aren't enough data servers meta server sends always nbServer = 0
         {
-            log.Info(this.clientID + " CREATE :: Meta Server didn't create the file!"); // Change this to know the reason
-            return;
+            System.Threading.Thread.Sleep(5000);
+            fh = mdi.create(this.clientID, filename, nbDataServers, readQuorum, writeQuorum);
         }
         log.Info(this.clientID + " CREATE ::  Received the File Handler of file: " + fh.filenameGlobal);
 
@@ -242,7 +242,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     
     public void open(string filename)
     {
-
         FileHandler filehandler;
 
         //1. Check if file is already opened.
@@ -347,7 +346,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
     public void delete(string filename)
     {
-
         //1. Find out which meta server to call
         MyRemoteMetaDataInterface mdi = Utils.getMetaDataRemoteInterface(filename, metaServerPorts);
         log.Info(this.clientID + " DELETE ::  Meta-Server to Contact: " + Utils.whichMetaServer(filename));
@@ -613,7 +611,8 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     }
 
 
-    public void read(int fileRegisterIndex, int semantics, int byteArrayRegisterIndex) { 
+    public void read(int fileRegisterIndex, int semantics, int byteArrayRegisterIndex) 
+    {
         log.Info(this.clientID + " READ :: Semantics - " + semantics.ToString());
         
         //1.Find if this client has this file opened
