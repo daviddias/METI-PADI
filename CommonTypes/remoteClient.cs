@@ -89,7 +89,16 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
 
 
-
+    /* File is open */
+    private int nextFreeByteArray()
+    {
+        for(int i = 0; i < byteArrayRegisterOLD.Capacity; i++)
+        {
+            if (byteArrayRegisterOLD.ElementAtOrDefault(i) != null)
+                return i;
+        }
+        return -1;
+    }
 
 
     /************************************************************************
@@ -742,5 +751,20 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                     break;
             }
         }
+    }
+
+    public void copy(int fileRegisterIndex1, int semantics, int fileRegisterIndex2, string salt)
+    {
+        //look for the first available byteRegister,if all are ocupied overwrite the oldest
+        int reg = nextFreeByteArray();
+        if(reg == -1)
+        {
+            log.Info(this.clientID + " ERROR: Copy :: All byteregisters ocupied");
+            return;
+        }
+        read(fileRegisterIndex1, semantics, reg);
+
+        string s = byteArrayRegisterOLD[reg].ToString() + salt;
+        write(fileRegisterIndex2, System.Text.Encoding.UTF8.GetBytes(s));
     }
 }
