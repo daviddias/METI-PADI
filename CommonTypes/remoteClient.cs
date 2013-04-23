@@ -23,6 +23,7 @@ public interface remoteClientInterface {
     void write(int reg, int byteArray);                                                 //DONE
     void read(int reg, int semantics, int byteArray);                                   //DONE
     void exeScript(List<string> commands);
+    void copy(int reg1, int semantics, int reg2, string salt);
     string metodoOla(); //testing communication
 }
 
@@ -94,7 +95,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
         for(int i = 0; i < byteArrayRegisterOLD.Capacity; i++)
         {
-            if (byteArrayRegisterOLD.ElementAtOrDefault(i) != null)
+            if (byteArrayRegisterOLD.ElementAtOrDefault(i) == null)
                 return i;
         }
         return -1;
@@ -753,7 +754,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
     }
 
-    public void copy(int fileRegisterIndex1, int semantics, int fileRegisterIndex2, string salt)
+    public void copy(int reg1, int semantics, int reg2, string salt)
     {
         //look for the first available byteRegister,if all are ocupied overwrite the oldest
         int reg = nextFreeByteArray();
@@ -762,9 +763,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             log.Info(this.clientID + " ERROR: Copy :: All byteregisters ocupied");
             return;
         }
-        read(fileRegisterIndex1, semantics, reg);
+        read(reg1, semantics, reg);
 
-        string s = byteArrayRegisterOLD[reg].ToString() + salt;
-        write(fileRegisterIndex2, System.Text.Encoding.UTF8.GetBytes(s));
+        string s = System.Text.Encoding.Default.GetString(byteArrayRegisterOLD[reg]) + salt;
+        write(reg2, System.Text.Encoding.UTF8.GetBytes(s));
     }
 }

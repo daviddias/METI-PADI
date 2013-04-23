@@ -146,6 +146,11 @@ namespace Puppet_Master
                     }
                     break;
                 case "DUMP": dump(parsed[1]); break;
+                case "COPY": 
+                    for (int i = 6; i < parsed.Length; i++)
+                        parsed[5] += " " + parsed[i];
+                    copy(parsed[1], Convert.ToInt32(parsed[2]), parsed[3], Convert.ToInt32(parsed[4]), parsed[5]);
+                    break;
                 case "TRANSFER": transfer(parsed[1], parsed[2], parsed[3]); break;
                 case "HELLO": hello(parsed[1]); break;
             }
@@ -339,6 +344,7 @@ namespace Puppet_Master
         public delegate void DeleteRemoteAsyncDelegate(string filename);
         public delegate void ReadRemoteAsyncDelegate(int fileregister, int semantics, int bytearrayregister);
         public delegate TransactionDTO TransferRemoteAsyncDelegate(TransactionDTO dto, string address);
+        public delegate void CopyRemoteAsyncDelegate(int fileregister1, int semantics, int fileregister2, string salt);
 
 
 
@@ -565,6 +571,28 @@ namespace Puppet_Master
             IAsyncResult RemAr = RemoteDel.BeginInvoke(dto, "tcp://localhost:"+port+"/sdasdssd", null, null);
         }
 
+
+        private void copy(string process, int reg1, string semantics, int reg2, string salt)
+        {
+            // verifies if process is already running, if not start it
+            if (!isRunning(process))
+                startAlone(process);
+
+            int DEFAULT = 1;
+            int MONOTONIC = 2;
+            int semantic;
+
+            switch (semantics)
+            {
+                case "default": semantic = DEFAULT; break;
+                case "monotonic": semantic = MONOTONIC; break;
+                default: semantic = DEFAULT; break;
+            }
+
+            remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+            CopyRemoteAsyncDelegate RemoteDel = new CopyRemoteAsyncDelegate(rci.copy);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(reg1, semantic, reg2, salt, null, null);
+        }
 
         /*Communication Testing Method*/
         private void hello(string process)
