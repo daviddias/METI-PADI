@@ -449,7 +449,15 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         MyRemoteDataInterface di = Utils.getRemoteDataServerObj(port);
         newDTO.success = di.receiveFile(dto).success;
-        log.Info("TRANSFER :: transferFile : Operation Successful!");
+        log.Info("TRANSFER :: transferFile : Destination DataServer returned success = " + newDTO.success);
+
+        if (!newDTO.success)
+            return newDTO;
+           
+        File.GetAccessControl(dto.filenameForDataServer);
+        File.Delete(dto.filenameForDataServer);
+
+        log.Info("TRANSFER :: transferFile : File deleted successfuly! Operation Successful");
 
         return newDTO;
     }

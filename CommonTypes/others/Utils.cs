@@ -17,6 +17,7 @@ public static class Utils
      *              that is responsible(with failover)
      ************************************************************************/
 
+    // O CLIENTE CHAMA SEMPRE ESTE =)
     public static MyRemoteMetaDataInterface getMetaDataRemoteInterface(string filename, string[] metaServerPorts)
     {
         int metaServerToContact = Utils.whichMetaServer(filename);
@@ -31,7 +32,7 @@ public static class Utils
             }
             catch
             {
-                metaServerToContact = metaServerToContact + 2;
+                metaServerToContact = metaServerToContact + 3;
                 if (metaServerToContact > 5) { metaServerToContact = 0; }
                 continue;
             }
