@@ -146,6 +146,7 @@ namespace Puppet_Master
                     }
                     break;
                 case "DUMP": dump(parsed[1]); break;
+                case "TRANSFER": transfer(parsed[1], parsed[2], parsed[3]); break;
                 case "HELLO": hello(parsed[1]); break;
             }
         }
@@ -191,7 +192,7 @@ namespace Puppet_Master
             runningProcesses["m-" + 0].StartInfo.FileName = metaServerPath;
             runningProcesses["m-" + 0].Start();
             Console.WriteLine("Meta-Server 0 Started");
-            System.Threading.Thread.Sleep(10000);
+            System.Threading.Thread.Sleep(1000);
 
 
             String meta1 = (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 2).ToString();
@@ -201,7 +202,7 @@ namespace Puppet_Master
             runningProcesses["m-" + 1].Start();
 
             Console.WriteLine("Meta-Server 1 Started");
-            System.Threading.Thread.Sleep(10000);
+            System.Threading.Thread.Sleep(1000);
 
             String meta2 = (firstMetaServerPort + 2).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString();
             runningProcesses.Add("m-" + 2, new Process());
@@ -210,7 +211,7 @@ namespace Puppet_Master
             runningProcesses["m-" + 2].Start();
 
             Console.WriteLine("Meta-Server 2 Started");
-            System.Threading.Thread.Sleep(10000);
+            System.Threading.Thread.Sleep(1000);
 
 
             listOfMetaServerPorts = meta0; //Meta0 Contem a ordem certa de Meta-Servers que corresponde as responsabilidades para serem entregues aos clientes
@@ -337,6 +338,7 @@ namespace Puppet_Master
         public delegate void CloseRemoteAsyncDelegate(string filename);
         public delegate void DeleteRemoteAsyncDelegate(string filename);
         public delegate void ReadRemoteAsyncDelegate(int fileregister, int semantics, int bytearrayregister);
+        public delegate TransactionDTO TransferRemoteAsyncDelegate(TransactionDTO dto, string address);
 
 
 
@@ -549,6 +551,20 @@ namespace Puppet_Master
             RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.dump);
             IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
         }
+
+        private void transfer(string process, string filename, string destination_process)
+        {
+
+            TransactionDTO dto = new TransactionDTO(Utils.generateTransactionID(), "puppetmaster", filename);
+
+            string port = listOfDataServerPorts[(int)Char.GetNumericValue(destination_process[2])];
+
+            MyRemoteDataInterface rdi = Utils.getRemoteDataServerObj(listOfDataServerPorts[(int)Char.GetNumericValue(process[2])]);
+            //rci.create(filename, nbDataServers, readQuorum, writeQuorum);
+            TransferRemoteAsyncDelegate RemoteDel = new TransferRemoteAsyncDelegate(rdi.transferFile);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(dto, "tcp://localhost:"+port+"/sdasdssd", null, null);
+        }
+
 
         /*Communication Testing Method*/
         private void hello(string process)

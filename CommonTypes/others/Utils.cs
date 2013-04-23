@@ -17,6 +17,7 @@ public static class Utils
      *              that is responsible(with failover)
      ************************************************************************/
 
+    // O CLIENTE CHAMA SEMPRE ESTE =)
     public static MyRemoteMetaDataInterface getMetaDataRemoteInterface(string filename, string[] metaServerPorts)
     {
         int metaServerToContact = Utils.whichMetaServer(filename);
@@ -31,7 +32,7 @@ public static class Utils
             }
             catch
             {
-                metaServerToContact = metaServerToContact + 2;
+                metaServerToContact = metaServerToContact + 3;
                 if (metaServerToContact > 5) { metaServerToContact = 0; }
                 continue;
             }
@@ -54,6 +55,32 @@ public static class Utils
     }
 
 
+
+    /************************************************************************
+     *              Parse port number from given address 
+     ************************************************************************/
+    public static string getPortOfAddress(string address)
+    {
+
+        string[] words = address.Split(':');
+        if (words.Count() != 3)
+        {
+            System.Console.WriteLine("[UTILS:  getPortOfAddress]    Malformed address");
+            return null;
+        }
+
+
+        string[] port = words[2].Split('/');
+
+        if (port.Count() != 2)
+        {
+            System.Console.WriteLine("[UTILS:  getPortOfAddress]    Malformed address");
+            return null;
+        }
+
+        return port[0];
+
+    }
 
 
     /************************************************************************
