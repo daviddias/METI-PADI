@@ -42,7 +42,7 @@ namespace Puppet_Master
 
 
         String[] listOfMetaServerBackdoorPorts = new String[3];
-        String[] listOfDataServerBackdoorPorts = new String[1];
+        String[] listOfDataServerBackdoorPorts;
 
         // Dictonary of Running Processes Key=processID (e.g. c-1) Value=Process
         public Dictionary<string, Process> runningProcesses = new Dictionary<string, Process>();
@@ -250,7 +250,9 @@ namespace Puppet_Master
                 this.listOfMetaServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfMetaServerPorts[i]) + 2000).ToString();
             }
 
-            for (int i = 0; i < this.listOfDataServerPorts.Length-1; i++)
+            this.listOfDataServerBackdoorPorts = this.listOfDataServerPorts;
+
+            for (int i = 0; i < this.listOfDataServerBackdoorPorts.Length-1; i++)
             {
                 this.listOfDataServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfDataServerPorts[i]) + 100).ToString();
             }
@@ -303,11 +305,6 @@ namespace Puppet_Master
                 {
                     this.listOfMetaServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfMetaServerPorts[i]) + 2000).ToString();
                 }
-
-                for (int i = 0; i < this.listOfDataServerPorts.Length; i++)
-                {
-                    this.listOfDataServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfDataServerPorts[i]) + 100).ToString();
-                }
                 
             }
 
@@ -333,6 +330,11 @@ namespace Puppet_Master
                 }
                 dataPorts[processNum] = (firstDataServerPort + processNum).ToString();
                 this.listOfDataServerPorts = dataPorts;
+
+                for (int i = 0; i < this.listOfDataServerPorts.Length; i++)
+                {
+                    this.listOfDataServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfDataServerPorts[i]) + 100).ToString();
+                }
             }
 
             // Client
