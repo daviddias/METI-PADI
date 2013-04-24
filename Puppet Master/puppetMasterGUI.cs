@@ -301,6 +301,8 @@ namespace Puppet_Master
 
                 this.listOfMetaServerPorts = listOfMetas.Split(' ');
 
+                this.listOfDataServerBackdoorPorts = this.listOfDataServerPorts;
+
                 for (int i = 0; i < this.listOfMetaServerPorts.Length; i++)
                 {
                     this.listOfMetaServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfMetaServerPorts[i]) + 2000).ToString();
@@ -331,7 +333,9 @@ namespace Puppet_Master
                 dataPorts[processNum] = (firstDataServerPort + processNum).ToString();
                 this.listOfDataServerPorts = dataPorts;
 
-                for (int i = 0; i < this.listOfDataServerPorts.Length; i++)
+                this.listOfDataServerBackdoorPorts = this.listOfDataServerPorts;
+
+                for (int i = 0; i < this.listOfDataServerPorts.Length-1; i++)
                 {
                     this.listOfDataServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfDataServerPorts[i]) + 100).ToString();
                 }
