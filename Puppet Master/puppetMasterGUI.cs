@@ -38,6 +38,7 @@ namespace Puppet_Master
 
         String[] listOfDataServerPorts = new String[1];
         String[] listOfMetaServerPorts;
+        String[] listOfMetaServerBackdoorPorts = new String[3];
         String[] listOfClientPorts = new String[1];
 
         // Dictonary of Running Processes Key=processID (e.g. c-1) Value=Process
@@ -239,6 +240,11 @@ namespace Puppet_Master
             this.listOfDataServerPorts = listOfDataServerPorts.Split(' ');
             this.listOfMetaServerPorts = listOfMetaServerPorts.Split(' ');
             this.listOfClientPorts = listOfClientPorts.Split(' ');
+
+            for(int i = 0; i < this.listOfMetaServerPorts.Length; i++)
+            {
+                this.listOfMetaServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfMetaServerPorts[i]) + 2000).ToString();
+            }
         }
 
         private void startAlone(string process)
@@ -282,6 +288,11 @@ namespace Puppet_Master
                 System.Threading.Thread.Sleep(100);
 
                 this.listOfMetaServerPorts = listOfMetas.Split(' ');
+
+                for (int i = 0; i < this.listOfMetaServerPorts.Length; i++)
+                {
+                    this.listOfMetaServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfMetaServerPorts[i]) + 2000).ToString();
+                }
 
                 
             }
@@ -364,7 +375,7 @@ namespace Puppet_Master
             // Metadata Servers
             if (process.StartsWith("m-"))
             {
-                mdi = Utils.getRemoteMetaDataObj(listOfMetaServerPorts[(int)Char.GetNumericValue(process[2])]);
+                mdi = Utils.getRemoteMetaDataObj(listOfMetaServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
                 //mdi.fail();
                 RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.fail);
                 IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
@@ -393,7 +404,7 @@ namespace Puppet_Master
             // Metadata Servers
             if (process.StartsWith("m-"))
             {
-                mdi = Utils.getRemoteMetaDataObj(listOfMetaServerPorts[(int)Char.GetNumericValue(process[2])]);
+                mdi = Utils.getRemoteMetaDataObj(listOfMetaServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
                 //mdi.recover();
                 RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.recover);
                 IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
@@ -556,7 +567,7 @@ namespace Puppet_Master
             if (!isRunning(process))
                 startAlone(process);
 
-            MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(listOfMetaServerPorts[(int)Char.GetNumericValue(process[2])]);
+            MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(listOfMetaServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
             RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.dump);
             IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
         }
