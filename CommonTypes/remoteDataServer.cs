@@ -23,10 +23,10 @@ public interface MyRemoteDataInterface
     TransactionDTO commitDelete(TransactionDTO dto);                                    //DONE
 
     //usado pelo meta-server
-    TransactionDTO transferFile(TransactionDTO dto, string address);                    //PENDING 
+    TransactionDTO transferFile(TransactionDTO dto, string address);                    //DONE 
 
     //usado pelo data-server
-    TransactionDTO receiveFile(TransactionDTO dto);                                     //TODO (after checkpoint)
+    TransactionDTO receiveFile(TransactionDTO dto);                                     //DONE
 
     //usado pelo puppet-master
     void freeze();                                                                      //DONE

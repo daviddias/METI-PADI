@@ -35,7 +35,7 @@ class MetaDataServer{
         ChannelServices.RegisterChannel(channel, false);
 
         props["port"] = (Convert.ToInt32(thisMetaServerPort) + 2000).ToString(); // backdoor puppet master
-        props["name"] = (Convert.ToInt32(thisMetaServerPort) + 2000).ToString(); ;
+        props["name"] = (Convert.ToInt32(thisMetaServerPort) + 2000).ToString();
         TcpChannel channelBack = new TcpChannel(props, null, provider);
         ChannelServices.RegisterChannel(channelBack, false);
 

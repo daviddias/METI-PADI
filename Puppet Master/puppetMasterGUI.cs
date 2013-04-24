@@ -38,8 +38,11 @@ namespace Puppet_Master
 
         String[] listOfDataServerPorts = new String[1];
         String[] listOfMetaServerPorts;
-        String[] listOfMetaServerBackdoorPorts = new String[3];
         String[] listOfClientPorts = new String[1];
+
+
+        String[] listOfMetaServerBackdoorPorts = new String[3];
+        String[] listOfDataServerBackdoorPorts = new String[1];
 
         // Dictonary of Running Processes Key=processID (e.g. c-1) Value=Process
         public Dictionary<string, Process> runningProcesses = new Dictionary<string, Process>();
@@ -178,6 +181,7 @@ namespace Puppet_Master
             String listOfMetaServerPorts = "";
             String listOfClientPorts = "";
 
+
             //Data-Servers - Args <PortLocal>
             for (int i = 0; i < nbDataServers; i++)
             {
@@ -245,6 +249,12 @@ namespace Puppet_Master
             {
                 this.listOfMetaServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfMetaServerPorts[i]) + 2000).ToString();
             }
+
+            for (int i = 0; i < this.listOfDataServerPorts.Length-1; i++)
+            {
+                this.listOfDataServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfDataServerPorts[i]) + 100).ToString();
+            }
+
         }
 
         private void startAlone(string process)
@@ -294,6 +304,10 @@ namespace Puppet_Master
                     this.listOfMetaServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfMetaServerPorts[i]) + 2000).ToString();
                 }
 
+                for (int i = 0; i < this.listOfDataServerPorts.Length; i++)
+                {
+                    this.listOfDataServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfDataServerPorts[i]) + 100).ToString();
+                }
                 
             }
 
@@ -383,7 +397,7 @@ namespace Puppet_Master
             // Data Servers
             else if (process.StartsWith("d-"))
             {
-                dsi = Utils.getRemoteDataServerObj(listOfDataServerPorts[(int)Char.GetNumericValue(process[2])]);
+                dsi = Utils.getRemoteDataServerObj(listOfDataServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
                 //dsi.fail();
                 RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(dsi.fail);
                 IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
@@ -412,7 +426,7 @@ namespace Puppet_Master
             // Data Servers
             if (process.StartsWith("d-"))
             {
-                dsi = Utils.getRemoteDataServerObj(listOfDataServerPorts[(int)Char.GetNumericValue(process[2])]);
+                dsi = Utils.getRemoteDataServerObj(listOfDataServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
                 //dsi.recover();
                 RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(dsi.recover);
                 IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
@@ -429,7 +443,7 @@ namespace Puppet_Master
             // Data Servers
             if (process.StartsWith("d-"))
             {
-                dsi = Utils.getRemoteDataServerObj(listOfDataServerPorts[(int)Char.GetNumericValue(process[2])]);
+                dsi = Utils.getRemoteDataServerObj(listOfDataServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
                 //dsi.freeze();
                 RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(dsi.freeze);
                 IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
@@ -450,7 +464,7 @@ namespace Puppet_Master
             // Data Servers
             if (process.StartsWith("d-"))
             {
-                dsi = Utils.getRemoteDataServerObj(listOfDataServerPorts[(int)Char.GetNumericValue(process[2])]);
+                dsi = Utils.getRemoteDataServerObj(listOfDataServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
                 //dsi.unfreeze();
                 RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(dsi.unfreeze);
                 IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
