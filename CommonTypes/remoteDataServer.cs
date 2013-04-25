@@ -74,6 +74,14 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     public static Boolean isfailed = false;
     public static Boolean isfrozen = false;
 
+    // Momento do freeze ou fail do server para fazer os timeouts dos prepares
+    public static DateTime timeOff = DateTime.Now;
+
+    // timeout definido para fazer drop dos prepares quando o se unfreeze ou recover
+    public const int TIMEOUT = 60; // em segundos
+
+
+
     //Lista de Ficheiros Mutantes
     public static List<MutationListItem> mutationList;
 
@@ -539,6 +547,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             return;
         }
         isfrozen = true;
+        timeOff = DateTime.Now; // save actual time
         Console.WriteLine("[DATA_SERVER: freeze]    Success!");
         return; 
     }
@@ -555,9 +564,18 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         if (!Monitor.IsEntered(mutationList))
             Monitor.Enter(mutationList);
 
+        // drop prepares if is off for time more than timeout
+        if (isfrozen == false && Convert.ToInt32(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString()) > TIMEOUT)
+        {
+            mutationList = new List<MutationListItem>();
+            Console.WriteLine("Prepares Dropped");
+        }
+
         Monitor.PulseAll(mutationList);
         Monitor.Exit(mutationList);
         imAlive();
+
+
 
         Console.WriteLine("[DATA_SERVER: unfreeze]    Sucess!");
         return;
@@ -587,6 +605,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         
 
         isfailed = true;
+        timeOff = DateTime.Now; // save actual time
         Console.WriteLine("[DATA_SERVER: fail]    Success!");
         return; 
     }
@@ -606,6 +625,13 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         props["name"] = Convert.ToString(firstDataServerPort + myNumber);
         TcpChannel channel = new TcpChannel(props, null, provider);
         ChannelServices.RegisterChannel(channel, false);
+
+        // drop prepares if is off for time more than timeout
+        if (isfailed == false && Convert.ToInt32(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString()) > TIMEOUT)
+        {
+            mutationList = new List<MutationListItem>();
+            Console.WriteLine("Prepares Dropped");
+        }
 
         isfailed = false;
         imAlive();
