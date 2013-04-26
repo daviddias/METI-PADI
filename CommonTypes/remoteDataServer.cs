@@ -78,7 +78,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     public static DateTime timeOff = DateTime.Now;
 
     // timeout definido para fazer drop dos prepares quando o se unfreeze ou recover
-    public const int TIMEOUT = 60; // em segundos
+    public const int TIMEOUT = 30; // em segundos
 
 
 
@@ -560,17 +560,20 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         //    return;
         //}
 
-        isfrozen = false;
         if (!Monitor.IsEntered(mutationList))
             Monitor.Enter(mutationList);
 
+        Console.Write("Passaram " + Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString()).ToString() + " segundos\n\n");
+
+
         // drop prepares if is off for time more than timeout
-        if (isfrozen == false && Convert.ToInt32(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString()) > TIMEOUT)
+        if (isfrozen && Convert.ToInt32(Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString())) > TIMEOUT)
         {
-            mutationList = new List<MutationListItem>();
-            Console.WriteLine("Prepares Dropped");
+            mutationList.Clear();
+            Console.Write("Prepares Dropped\n\n");
         }
 
+        isfrozen = false;
         Monitor.PulseAll(mutationList);
         Monitor.Exit(mutationList);
         imAlive();
@@ -626,11 +629,13 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         TcpChannel channel = new TcpChannel(props, null, provider);
         ChannelServices.RegisterChannel(channel, false);
 
+        Console.WriteLine("Passaram " + DateTime.Now.Subtract(timeOff).TotalSeconds.ToString() + " segundos\n");
+
         // drop prepares if is off for time more than timeout
-        if (isfailed == false && Convert.ToInt32(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString()) > TIMEOUT)
+        if (isfailed && Convert.ToInt32(Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString())) > TIMEOUT)
         {
-            mutationList = new List<MutationListItem>();
-            Console.WriteLine("Prepares Dropped");
+            mutationList.Clear();
+            Console.Write("Prepares Dropped\n");
         }
 
         isfailed = false;
@@ -650,7 +655,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             UpdateRemoteAsyncDelegate RemoteUpdate = new UpdateRemoteAsyncDelegate(mdi[i].receiveAlive);
             IAsyncResult RemAr = RemoteUpdate.BeginInvoke((firstDataServerPort + myNumber).ToString(), null, null);
 
-            log.Info(" UPDATE SENDED::  Updated metadata table sended in background to others Metadata Servers");
+            log.Info(" UPDATE SENDED::  Updated metadata table sended in background to Metadata Servers");
         }
     }
 
