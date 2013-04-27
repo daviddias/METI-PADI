@@ -579,6 +579,13 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
                 s += fh.isOpen;
                 sw.WriteLine(s);
             }
+
+            s = "";
+            for (int k = 0 ; k < dataServersPorts.Count - 1 ; k++)
+            {
+                s += dataServersPorts[k] + ":";
+            }
+            sw.WriteLine(s);
             sw.Close();
         }
     }
@@ -620,6 +627,13 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
                 s += fh.isOpen;
                 sw.WriteLine(s);
             }
+
+            s = "";
+            for (int k = 0; k < dataServersPorts.Count - 1; k++)
+            {
+                s += dataServersPorts[k] + ":";
+            }
+            sw.WriteLine(s);
             sw.Close();
         }
 
