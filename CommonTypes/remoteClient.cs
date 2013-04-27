@@ -18,7 +18,7 @@ public interface remoteClientInterface {
     void open(string filename);                                                         //DONE
     void close(string filename);                                                        //DONE
     void create(string filename, int nbDataServers, int readQuorum, int writeQuorum);   //DONE                   
-    void delete(string filename);                                                       //todo
+    void delete(string filename);                                                       //DONEs
     void write(int reg, byte[] byteArray);                                              //DONE
     void write(int reg, int byteArray);                                                 //DONE
     void read(int reg, int semantics, int byteArray);                                   //DONE
@@ -53,6 +53,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         this.metaServerPorts[5] = metaServerPorts[2];
 
         fileRegister = new List<FileHandler>(Constants.MAX_FILES_OPENED);
+        
         byteArrayRegisterOLD = new List<byte[]>(Constants.MAX_FILES_OPENED);
         byteArrayRegister = new List<ByteArrayRecord>(Constants.MAX_FILES_OPENED);
 
@@ -74,7 +75,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     private Boolean isOpen(string filename)
     {
         foreach (FileHandler fh in fileRegister)
-            if (fh.filenameGlobal == filename) //!Not sure if the comparison works in C# -> Check it!
+            if (fh.filenameGlobal == filename) 
                 return true;
         return false;
     }
@@ -85,30 +86,30 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         foreach (FileHandler fh in fileRegister)
             if (fh.filenameGlobal == filename)
                 return fh;
+        log.Info("Couldn't find a File Handler with this filename: " + filename + "  on client");
         return null;
     }
 
 
 
     /* File is open */
-    private int nextFreeByteArray()
+    private int nextFreeByteArrayRegister()
     {
         for(int i = 0; i < byteArrayRegisterOLD.Capacity; i++)
         {
             if (byteArrayRegisterOLD.ElementAtOrDefault(i) == null)
                 return i;
         }
+        log.Info("All byte Arrays are full"); 
         return -1;
     }
 
 
-    /************************************************************************
+    /**************************************************************************************************
      *          
-     *                 Invoked Methods by Pupper Master
+     *                              Invoked Methods by Pupper Master
      *              
-     ************************************************************************/
-
-
+     **************************************************************************************************/
 
 
 
@@ -121,7 +122,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     public delegate TransactionDTO commitCreateRemoteAsyncDelegate(TransactionDTO dto);
 
     private static Dictionary<string, int> createQUORUM;  //Key - Transaction ID ; int - number of responses
-
 
     // Callbacks
     public static void prepareCreateRemoteAsyncCallBack(IAsyncResult ar)
@@ -158,7 +158,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
    
 
         //2. Get File-Handle
-        //---TODO--- Verificar se é possível criar (aka: se há Data-Servers suficientes para o request, caso não haja, temos de Bloquear
         log.Info(this.clientID + " CREATE ::  Sending create request to Meta-Server");
         FileHandler fh = mdi.create(this.clientID, filename, nbDataServers, readQuorum, writeQuorum);
         while (fh.nbServers == 0) // if there aren't enough data servers meta server sends always nbServer = 0
@@ -169,7 +168,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         log.Info(this.clientID + " CREATE ::  Received the File Handler of file: " + fh.filenameGlobal);
 
 
-        
         //3. Contact Data-Servers to Prepare
         log.Info(this.clientID + " CREATE ::  Initiating 2PC");
         string transactionID = Utils.generateTransactionID(); 
@@ -186,8 +184,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         while (true)
         {
-            System.Threading.Thread.Sleep(1); // Wait 1ms to avoid that the second server receive a commit before a prepare
-
+            System.Threading.Thread.Sleep(10); // Wait 10ms to avoid that the second server receive a commit before a prepare
             lock (createQUORUM)
             {
                 if (createQUORUM.ContainsKey(transactionID) ) //the fh.writeQuorum is the same as createQuorum
@@ -217,8 +214,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         while (true)
         {
-            System.Threading.Thread.Sleep(1); // Wair 1ms to avoid that the second server receive a commit before a prepare
-
+            System.Threading.Thread.Sleep(10); // Wair 10ms to avoid that the second server receive a commit before a prepare
             lock (createQUORUM)
             {
                 if (createQUORUM.ContainsKey(transactionID)) //Write Quorum is the same as Create on filehandler
@@ -237,7 +233,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         //5. Save FileHandler
         fileRegister.Add(fh);
         
-
         //6. Tell Meta-Data Server to Confirm Creation
         MyRemoteMetaDataInterface mdiConfirm = Utils.getMetaDataRemoteInterface(filename, metaServerPorts);
         mdiConfirm.confirmCreate(this.clientID, filename, true); 
@@ -446,6 +441,8 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
 
 
+
+
     /*------------------------------------------------------------------------         
      *                                   WRITE
      *-----------------------------------------------------------------------*/
@@ -460,8 +457,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
     // Callbacks
     public static void prepareWriteRemoteAsyncCallBack(IAsyncResult ar)
-    {
-        // Alternative 2: Use the callback to get the return value
+    {    
         prepareWriteRemoteAsyncDelegate del = (prepareWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
         TransactionDTO assyncResult = del.EndInvoke(ar);
         log.Info(assyncResult.clientID + " WRITE ::  Call Back Received - PrepareWrite for transaction: " + assyncResult.transactionID);
@@ -475,7 +471,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
     public static void commitWriteRemoteAsyncCallBack(IAsyncResult ar)
     {
-        // Alternative 2: Use the callback to get the return value
         commitWriteRemoteAsyncDelegate del = (commitWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
         TransactionDTO assyncResult = del.EndInvoke(ar);
         log.Info(assyncResult.clientID + " WRITE ::  Call Back Received - CommitWrite for transaction: " + assyncResult.transactionID);
@@ -488,34 +483,37 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     }
 
     // Remote Methods
-    public void write(int reg, Byte[] byteArray)
+    public void write(int fileRegisterIndex, int byteArrayRegisterIndex, Byte[] byteArray)
     {
         FileHandler fh = null;
 
         // 1.Find if this client has this file opened
-        if (fileRegister.Count == 0 || reg > fileRegister.Count || !isOpen(fileRegister[reg].filenameGlobal))
+        if (fileRegister.Count == 0 || fileRegisterIndex > fileRegister.Count || fileRegister[fileRegisterIndex] == null)
         {
-            log.Info(this.clientID + " WRITE ::  File: with register " + reg + " is not open yet");
+            log.Info(this.clientID + " WRITE ::  File: with register " + fileRegisterIndex + " is not open yet");
             return;
         }
-        fh = fileRegister[reg];
-        log.Info(this.clientID + " WRITE ::  File: " + fileRegister[reg].filenameGlobal + " is  open");
+        fh = fileRegister[fileRegisterIndex];
+        log.Info(this.clientID + " WRITE ::  File: " + fileRegister[fileRegisterIndex].filenameGlobal + " is  open");
         
+
         //2. Find out which Meta-Server to Call 
         MyRemoteMetaDataInterface mdi = Utils.getMetaDataRemoteInterface(fh.filenameGlobal, metaServerPorts);
         log.Info(this.clientID + " WRITE ::  Meta-Server to Contact: " + Utils.whichMetaServer(fh.filenameGlobal));
 
-        //3. If not available, try next one
-        //TODO
 
-        //4. Contact metaserver for write operation
-        if (mdi.write(this.clientID, fh) == null)
+        //3. Contact metaserver for write operation & obtain the the most updated fileHandler (just because of versioning)
+        fh = mdi.write(this.clientID, fh);
+        if (fh == null)
         {
             log.Info(this.clientID + " WRITE ::  Meta-Server didn't allow Write on File: " + Utils.whichMetaServer(fh.filenameGlobal));
             return;
         }
 
-        //5. Contact Data-Servers to Prepare
+        // Update the version
+        fh.version = fh.version + 1;
+
+        //4. Contact Data-Servers to Prepare
         log.Info(this.clientID + " WRITE ::  Iniciating 2PC for File: " + Utils.whichMetaServer(fh.filenameGlobal));
         string transactionID = Utils.generateTransactionID();
         foreach (string dataServerPort in fh.dataServersPorts)
@@ -523,7 +521,8 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
             prepareWriteRemoteAsyncDelegate RemoteDel = new prepareWriteRemoteAsyncDelegate(di.prepareWrite);
             AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.prepareWriteRemoteAsyncCallBack);
-            TransactionDTO prepareDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);
+            TransactionDTO prepareDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);    
+            prepareDTO.version = fh.version;
             prepareDTO.filecontent = byteArray;
             IAsyncResult RemAr = RemoteDel.BeginInvoke(prepareDTO, RemoteCallback, null);
             //di.prepareWrite(this.clientID, fh.dataServersFiles[dataServerPort], byteArray); //SYNC
@@ -548,15 +547,16 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             }
         }
 
-        //6. Contact Data-Servers to Commit
+        //5. Contact Data-Servers to Commit
         transactionID = Utils.generateTransactionID();
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
             commitWriteRemoteAsyncDelegate RemoteDel = new commitWriteRemoteAsyncDelegate(di.commitWrite);
             AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.commitWriteRemoteAsyncCallBack);
-            TransactionDTO prepareDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);
-            IAsyncResult RemAr = RemoteDel.BeginInvoke(prepareDTO, RemoteCallback, null);    
+            TransactionDTO commitDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);
+            commitDTO.version = fh.version;
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(commitDTO, RemoteCallback, null);    
             //di.commitWrite(this.clientID, fh.dataServersFiles[dataServerPort]); //SYNC
         }
 
@@ -577,18 +577,45 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             }
         }
 
-        //7. Tell Meta-Data Server to Confirm Creation 
+       
+
+
+        //6. Tell Meta-Data Server to Confirm Creation 
         MyRemoteMetaDataInterface mdiConfirm = Utils.getMetaDataRemoteInterface(fh.filenameGlobal, metaServerPorts);
         mdi.confirmWrite(this.clientID, fh, true);
+        
+        //Update client file handler and save the content in ByteArrayRegister
+        fh.isLocked = false; //update the file handler on client side 
+        fileRegister[fileRegisterIndex] = fh;
+
+        //***** TODO Mudar para new e guardar com version, content e filename :) 
+        byteArrayRegisterOLD[byteArrayRegisterIndex] = byteArray;
+        
         log.Info(this.clientID + " WRITE ::  Operation Success on File: " + Utils.whichMetaServer(fh.filenameGlobal));
         return;
     }
 
+
+
     /* To be used for reference of byteArrayRegister */
-    public void write(int reg, int byteArrayRegisterIndex)
+    public void write(int fileRegisterIndex, int byteArrayRegisterIndex)
     {
-        write(reg, byteArrayRegisterOLD[byteArrayRegisterIndex]);
+        write(fileRegisterIndex, byteArrayRegisterIndex, byteArrayRegisterOLD[byteArrayRegisterIndex]);
     }
+
+    /* To be used without reference of byteArrayRegister */
+    public void write(int fileRegisterIndex, Byte[] byteArray)
+    {
+        int byteArrayRegisterIndex = nextFreeByteArrayRegister();
+        if (byteArrayRegisterIndex == -1)
+        {
+            log.Info(this.clientID + " WRITE :: All ByteArrayRegisters are full, won't do the write");
+            return;
+        }
+        write(fileRegisterIndex, byteArrayRegisterIndex, byteArray);
+    }
+
+
 
 
 
@@ -757,7 +784,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     public void copy(int reg1, int semantics, int reg2, string salt)
     {
         //look for the first available byteRegister,if all are ocupied overwrite the oldest
-        int reg = nextFreeByteArray();
+        int reg = nextFreeByteArrayRegister();
         if(reg == -1)
         {
             log.Info(this.clientID + " ERROR: Copy :: All byteregisters ocupied");

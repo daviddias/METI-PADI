@@ -81,13 +81,11 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     public const int TIMEOUT = 1; // em segundos
 
 
-
     //Lista de Ficheiros Mutantes
     public static List<MutationListItem> mutationList;
 
     // first port metaserver (hardcoded)
     public static int firstMetaserverPort = 8000;
-
 
     public static int firstDataServerPort = 9000;
 
@@ -158,7 +156,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         //Verifica se o ficheiro ja esta a ser alterado
         if (mutationList.Find(f => f.filename == dto.filenameForDataServer) != null){
-            log.Info("WRITE :: PrepareWrite : File(LocalName): " + dto.filenameForDataServer + " does not exist");
+            log.Info("WRITE :: PrepareWrite : File(LocalName): " + dto.filenameForDataServer + " is already being manipulated");
             newDTO.success = false;
             return newDTO;
         }
