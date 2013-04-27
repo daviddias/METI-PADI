@@ -1,11 +1,22 @@
 ﻿using log4net;
 using System;
 using System.Collections.Generic;
+using System.Collections;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Net;
+using System.Net.Sockets;
+using System.Runtime.Remoting;
+using System.Runtime.Remoting.Messaging;
+using System.Runtime.Remoting.Channels;
+using System.Runtime.Remoting.Channels.Tcp;
 using CommonTypes;
+using System.Runtime.Serialization.Formatters;
+
+
 
 public interface MyRemoteDataInterface
 {
@@ -23,10 +34,10 @@ public interface MyRemoteDataInterface
     TransactionDTO commitDelete(TransactionDTO dto);                                    //DONE
 
     //usado pelo meta-server
-    TransactionDTO transferFile(TransactionDTO dto, string address);                    //PENDING 
+    TransactionDTO transferFile(TransactionDTO dto, string address);                    //DONE 
 
     //usado pelo data-server
-    TransactionDTO receiveFile(TransactionDTO dto);                                     //TODO (after checkpoint)
+    TransactionDTO receiveFile(TransactionDTO dto);                                     //DONE
 
     //usado pelo puppet-master
     void freeze();                                                                      //DONE
@@ -62,6 +73,14 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     //Estados do servidor
     public static Boolean isfailed = false;
     public static Boolean isfrozen = false;
+
+    // Momento do freeze ou fail do server para fazer os timeouts dos prepares
+    public static DateTime timeOff = DateTime.Now;
+
+    // timeout definido para fazer drop dos prepares quando o se unfreeze ou recover
+    public const int TIMEOUT = 1; // em segundos
+
+
 
     //Lista de Ficheiros Mutantes
     public static List<MutationListItem> mutationList;
@@ -528,6 +547,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             return;
         }
         isfrozen = true;
+        timeOff = DateTime.Now; // save actual time
         Console.WriteLine("[DATA_SERVER: freeze]    Success!");
         return; 
     }
@@ -540,12 +560,24 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         //    return;
         //}
 
-        isfrozen = false;
         if (!Monitor.IsEntered(mutationList))
             Monitor.Enter(mutationList);
 
+        Console.Write("Passaram " + Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString()).ToString() + " segundos\n\n");
+
         Monitor.PulseAll(mutationList);
         Monitor.Exit(mutationList);
+
+        System.Threading.Thread.Sleep(500);
+
+        // drop prepares if is off for time more than timeout
+        if (isfrozen && Convert.ToInt32(Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString())) > TIMEOUT)
+        {
+            mutationList.Clear();
+            log.Info("[DATA_SERVER: unfreeze]    Mutation list was cleared due to time-out expiration! (" + Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString()).ToString() + " seconds)");
+        }
+
+        isfrozen = false;
         imAlive();
 
         Console.WriteLine("[DATA_SERVER: unfreeze]    Sucess!");
@@ -554,10 +586,30 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
     public void fail() {
 
+        //1. Is MetaServer Able to Respond (Fail)
+        if (isfailed)
+        {
+            log.Info("[DATA_SERVER: fail]    The server is on 'fail'!");
+            return;
+        }
+
+        IChannel[] defaultTCPChannel = ChannelServices.RegisteredChannels;
+        for (int channelCount = 0; channelCount < defaultTCPChannel.Length; channelCount++)
+        {
+            //Locate My registerd channel
+            if (defaultTCPChannel[channelCount].ChannelName == Convert.ToString(firstDataServerPort+myNumber))
+            {
+                //Release(Unregister) the Channel assigned to this Instance
+                ChannelServices.UnregisterChannel(defaultTCPChannel[channelCount]);
+                break;
+            }
+        }
+
         
 
         isfailed = true;
-        Console.WriteLine("[DATA_SERVER: faile]    Success!");
+        timeOff = DateTime.Now; // save actual time
+        Console.WriteLine("[DATA_SERVER: fail]    Success!");
         return; 
     }
 
@@ -567,6 +619,16 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         //    Console.WriteLine("[DATA_SERVER: recover]    The server was not failed!");
         //    return;
         //}
+
+        BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
+        provider.TypeFilterLevel = TypeFilterLevel.Full;
+        IDictionary props = new Hashtable();
+        //props["port"] = 8081;
+        props["port"] = Convert.ToString(firstDataServerPort + myNumber);
+        props["name"] = Convert.ToString(firstDataServerPort + myNumber);
+        TcpChannel channel = new TcpChannel(props, null, provider);
+        ChannelServices.RegisterChannel(channel, false);
+
         isfailed = false;
         imAlive();
         Console.WriteLine("[DATA_SERVER: recover]    Success!");
@@ -584,7 +646,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             UpdateRemoteAsyncDelegate RemoteUpdate = new UpdateRemoteAsyncDelegate(mdi[i].receiveAlive);
             IAsyncResult RemAr = RemoteUpdate.BeginInvoke((firstDataServerPort + myNumber).ToString(), null, null);
 
-            log.Info(" UPDATE SENDED::  Updated metadata table sended in background to others Metadata Servers");
+            log.Info(" UPDATE SENDED::  Updated metadata table sended in background to Metadata Servers");
         }
     }
 

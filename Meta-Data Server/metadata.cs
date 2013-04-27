@@ -33,8 +33,16 @@ class MetaDataServer{
         
         TcpChannel channel = new TcpChannel(props, null, provider);
         ChannelServices.RegisterChannel(channel, false);
+
+        props["port"] = (Convert.ToInt32(thisMetaServerPort) + 2000).ToString(); // backdoor puppet master
+        props["name"] = (Convert.ToInt32(thisMetaServerPort) + 2000).ToString();
+        TcpChannel channelBack = new TcpChannel(props, null, provider);
+        ChannelServices.RegisterChannel(channelBack, false);
+
         MyRemoteMetaDataObject mdo = new MyRemoteMetaDataObject(thisMetaServerPort, aMetaServerPort,bMetaServerPort,dataServersPorts);
         RemotingServices.Marshal(mdo, "MyRemoteMetaDataObjectName", typeof(MyRemoteMetaDataObject));
+
+
 
         System.Console.WriteLine("<enter> para sair...");
         System.Console.ReadLine();
