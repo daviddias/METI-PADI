@@ -83,6 +83,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
     //Lista de Ficheiros Mutantes
     public static List<MutationListItem> mutationList;
+    public static Dictionary<String, int> fileAndVersion;
 
     // first port metaserver (hardcoded)
     public static int firstMetaserverPort = 8000;
@@ -95,6 +96,8 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     public MyRemoteDataObject(int dataServerNumber)
     {
         mutationList = new List<MutationListItem>();
+        fileAndVersion = new Dictionary<string, int>();
+
 
         string path = Environment.ExpandEnvironmentVariables("%HOMEDRIVE%%HOMEPATH%\\PADI-FS\\") + System.Diagnostics.Process.GetCurrentProcess().ProcessName + "-" + dataServerNumber;
 
@@ -194,7 +197,8 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         mutationList.Remove(item);
         File.WriteAllBytes(item.filename, item.byte_array);
-        log.Info("WRITE :: CommiteWrite : Operation complete from Client: " + dto.clientID + " file(localname): " + dto.filenameForDataServer);
+        fileAndVersion[dto.filenameForDataServer]++;
+        log.Info("WRITE :: CommiteWrite : Operation complete from Client: " + dto.clientID + " file(localname): " + dto.filenameForDataServer + " version: " + fileAndVersion[dto.filenameForDataServer]);
         newDTO.success = true;
         return newDTO;
     }
@@ -236,6 +240,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         Console.WriteLine("[DATA_SERVER: read]    Success! : Content Read- " +  System.Text.Encoding.Default.GetString(bytesRead));
         newDTO.success = true;
         newDTO.filecontent = bytesRead;
+        newDTO.version = fileAndVersion[dto.filenameForDataServer];
         return newDTO;
     }
 
@@ -313,6 +318,8 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         mutationList.Remove(item);
         File.Create(dto.filenameForDataServer).Close();
+
+        fileAndVersion.Add(dto.filenameForDataServer, 0);
 
         log.Info("CREATE :: CommitCreate : Operation complete by Client: " + dto.clientID + " for file: " + dto.filenameForDataServer);
         newDTO.success = true;
@@ -399,6 +406,8 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         mutationList.Remove(item);
         File.GetAccessControl(dto.filenameForDataServer);
         File.Delete(dto.filenameForDataServer);
+
+        fileAndVersion.Remove(dto.filenameForDataServer);
 
         log.Info("DELETE :: CommitDelete : Operation Complete");
         newDTO.success = true;
