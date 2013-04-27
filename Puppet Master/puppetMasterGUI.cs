@@ -593,9 +593,18 @@ namespace Puppet_Master
             if (!isRunning(process))
                 startAlone(process);
 
-            MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(listOfMetaServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
-            RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.dump);
-            IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
+            if (process.StartsWith("m-"))
+            {
+                MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(listOfMetaServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
+                RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.dump);
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
+            }
+            else if (process.StartsWith("d-"))
+            {
+                MyRemoteDataInterface rdi = Utils.getRemoteDataServerObj(listOfDataServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
+                RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(rdi.dump);
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
+            }
         }
 
         private void transfer(string process, string filename, string destination_process)

@@ -44,6 +44,7 @@ public interface MyRemoteDataInterface
     void unfreeze();                                                                    //DONE
     void fail();                                                                        //DONE
     void recover();                                                                     //DONE
+    void dump();
 }
 
 public class MutationListItem {
@@ -655,6 +656,32 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
             log.Info(" UPDATE SENDED::  Updated metadata table sended in background to Metadata Servers");
         }
+    }
+
+    public void dump() {
+
+        System.Console.WriteLine();
+        System.Console.WriteLine("_________________[DATA SERVER  DUMP]________________");
+        System.Console.WriteLine();
+        System.Console.WriteLine();
+
+        System.Console.WriteLine("Files in this Data Server:");
+        System.Console.WriteLine();
+
+        foreach (string filename in fileAndVersion.Keys) {
+            System.Console.WriteLine("      Filename: " + filename + "    Version: " + fileAndVersion[filename]);
+        }
+        System.Console.WriteLine();
+
+        System.Console.WriteLine("Files being used by other processes:");
+        System.Console.WriteLine();
+
+        foreach (MutationListItem item in mutationList)
+        {
+            System.Console.WriteLine("     Filename: " + item.filename + "  Client ID: " + item.clientID);
+        }
+        System.Console.WriteLine();
+
     }
 
     /* delegates */
