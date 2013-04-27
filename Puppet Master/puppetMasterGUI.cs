@@ -332,12 +332,18 @@ namespace Puppet_Master
                 }
                 dataPorts[processNum] = (firstDataServerPort + processNum).ToString();
                 this.listOfDataServerPorts = dataPorts;
-
+                /*
                 this.listOfDataServerBackdoorPorts = this.listOfDataServerPorts;
 
                 for (int i = 0; i < this.listOfDataServerPorts.Length-1; i++)
                 {
                     this.listOfDataServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfDataServerPorts[i]) + 100).ToString();
+                }*/
+
+                listOfDataServerBackdoorPorts = new string[listOfDataServerPorts.Length];
+                for (int i = 0; i < this.listOfDataServerPorts.Length; i++)
+                {
+                    this.listOfDataServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfDataServerPorts[i]) + 500).ToString();
                 }
             }
 

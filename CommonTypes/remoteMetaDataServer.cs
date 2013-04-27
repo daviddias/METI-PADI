@@ -31,7 +31,7 @@ public interface MyRemoteMetaDataInterface{
     void confirmDelete(string clientID, FileHandler filehandler, Boolean deleted);
     FileHandler write(string clientID, FileHandler filehandler);
     void confirmWrite(string clientID, FileHandler filehander, Boolean wrote);
-    void receiveUpdate(Dictionary<string, FileHandler>[] fileTable);
+    void receiveUpdate(Dictionary<string, FileHandler>[] fileTable, List<String> newDataServerPorts);
     void receiveAlive(string port); //usado pelo Data-Server para dizer que está vivo
 
     void alive(); //usado pelo cliente para verificar que este meta-data está vivo
@@ -121,7 +121,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public override object InitializeLifetimeService(){ return null; }
 
     /* delegates */
-    public delegate void prepareUpdateRemoteAsyncDelegate(Dictionary<string, FileHandler>[] newFileTable);
+    public delegate void prepareUpdateRemoteAsyncDelegate(Dictionary<string, FileHandler>[] newFileTable, List<string> newDataServerPorts);
 
 
 
@@ -518,9 +518,14 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
                 s += "\t-----------------------------\n\n";
         }
 
-
         log.Info("[METASERVER: dump]    Success!");
         log.Info(s);
+
+        System.Console.WriteLine("I know this DATA-SERVERS:");
+        foreach (string port in dataServersPorts)
+        {
+            System.Console.WriteLine(port);
+        }
 
         return;
     }
@@ -543,7 +548,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         for (int i = 0; i < 2; i++)
         {
             prepareUpdateRemoteAsyncDelegate RemoteUpdate = new prepareUpdateRemoteAsyncDelegate(mdi[i].receiveUpdate);
-            IAsyncResult RemAr = RemoteUpdate.BeginInvoke(fileTables, null, null);
+            IAsyncResult RemAr = RemoteUpdate.BeginInvoke(fileTables, dataServersPorts, null, null);
 
             log.Info(" UPDATE SENDED::  Updated metadata table sended in background to others Metadata Servers");
         }
@@ -590,13 +595,19 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         }
     }
 
-    public void receiveUpdate(Dictionary<string, FileHandler>[] newFileTable)
+    public void receiveUpdate(Dictionary<string, FileHandler>[] newFileTable, List<string> newDataServersPorts)
     {
         for (int i = 0; i < 6; i++)
             if (i != whoAmI * 2 || i != whoAmI * 2 + 1) // dont update the files that it is responsible
                 fileTables[i] = newFileTable[i];
 
         // save the filetables to disk on a file
+
+        foreach (string newPort in newDataServersPorts) {
+            if (dataServersPorts.Find(p => p == newPort) == null) {
+                dataServersPorts.Add(newPort);
+            }
+        }
 
         for (int i = 0; i < 6; i++)
         {

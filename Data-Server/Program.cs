@@ -24,8 +24,8 @@ class DataServer
         ChannelServices.RegisterChannel(channel, false);
 
 
-        props["port"] = (Convert.ToInt32(dataServerPort) + 100).ToString(); // backdoor puppet master
-        props["name"] = (Convert.ToInt32(dataServerPort) + 100).ToString();
+        props["port"] = (Convert.ToInt32(dataServerPort) + 500).ToString(); // backdoor puppet master
+        props["name"] = (Convert.ToInt32(dataServerPort) + 500).ToString();
         TcpChannel channelBack = new TcpChannel(props, null, provider);
         ChannelServices.RegisterChannel(channelBack, false);
 
