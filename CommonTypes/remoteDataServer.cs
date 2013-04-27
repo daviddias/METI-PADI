@@ -78,7 +78,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     public static DateTime timeOff = DateTime.Now;
 
     // timeout definido para fazer drop dos prepares quando o se unfreeze ou recover
-    public const int TIMEOUT = 30; // em segundos
+    public const int TIMEOUT = 1; // em segundos
 
 
 
@@ -565,20 +565,20 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         Console.Write("Passaram " + Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString()).ToString() + " segundos\n\n");
 
+        Monitor.PulseAll(mutationList);
+        Monitor.Exit(mutationList);
+
+        System.Threading.Thread.Sleep(500);
 
         // drop prepares if is off for time more than timeout
         if (isfrozen && Convert.ToInt32(Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString())) > TIMEOUT)
         {
             mutationList.Clear();
-            Console.Write("Prepares Dropped\n\n");
+            log.Info("[DATA_SERVER: unfreeze]    Mutation list was cleared due to time-out expiration! (" + Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString()).ToString() + " seconds)");
         }
 
         isfrozen = false;
-        Monitor.PulseAll(mutationList);
-        Monitor.Exit(mutationList);
         imAlive();
-
-
 
         Console.WriteLine("[DATA_SERVER: unfreeze]    Sucess!");
         return;
@@ -628,15 +628,6 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         props["name"] = Convert.ToString(firstDataServerPort + myNumber);
         TcpChannel channel = new TcpChannel(props, null, provider);
         ChannelServices.RegisterChannel(channel, false);
-
-        Console.WriteLine("Passaram " + DateTime.Now.Subtract(timeOff).TotalSeconds.ToString() + " segundos\n");
-
-        // drop prepares if is off for time more than timeout
-        if (isfailed && Convert.ToInt32(Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString())) > TIMEOUT)
-        {
-            mutationList.Clear();
-            Console.Write("Prepares Dropped\n");
-        }
 
         isfailed = false;
         imAlive();
