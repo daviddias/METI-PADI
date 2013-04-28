@@ -605,6 +605,12 @@ namespace Puppet_Master
                 RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(rdi.dump);
                 IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
             }
+            else if (process.StartsWith("c-"))
+            {
+                remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
+                RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(rci.dump);
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
+            }
         }
 
         private void transfer(string process, string filename, string destination_process)
