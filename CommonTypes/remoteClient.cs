@@ -25,6 +25,7 @@ public interface remoteClientInterface {
     void exeScript(List<string> commands);
     void copy(int reg1, int semantics, int reg2, string salt);
     string metodoOla(); //testing communication
+    void dump();                                                                       
 }
 
 public class remoteClient : MarshalByRefObject, remoteClientInterface
@@ -795,4 +796,38 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         string s = System.Text.Encoding.Default.GetString(byteArrayRegisterOLD[reg]) + salt;
         write(reg2, System.Text.Encoding.UTF8.GetBytes(s));
     }
+
+    public void dump() {
+
+
+        /*public static List<FileHandler> fileRegister;                   
+        public static List<byte[]> byteArrayRegisterOLD;
+        public static List<ByteArrayRecord> byteArrayRegister;*/
+
+        System.Console.WriteLine();
+        System.Console.WriteLine("_________________[CLIENT  DUMP]________________");
+        System.Console.WriteLine();
+        System.Console.WriteLine();
+
+        System.Console.WriteLine("Opened files by this client:");
+        System.Console.WriteLine();
+
+        foreach (FileHandler fh in fileRegister)
+        {
+            System.Console.WriteLine("      Filename: " + fh.filenameGlobal + "    Version: " + fh.version);
+        }
+        System.Console.WriteLine();
+
+        System.Console.WriteLine("Byte-Array records in this client:");
+        System.Console.WriteLine();
+
+        int i = 0;
+        foreach (byte[] item in byteArrayRegisterOLD)
+        {
+            System.Console.WriteLine("["+ i + "]    Content: " + System.Text.Encoding.Default.GetString(item));
+            i++;
+        }
+        System.Console.WriteLine();
+    }
+
 }
