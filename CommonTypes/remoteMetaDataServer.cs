@@ -101,8 +101,12 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         for (int i = 0; i < _dataServersPorts.Length; i++)
         {
-            // %%TODO - Pasar a adicionar ao dataServerMap 
-            dataServersPorts.Add(_dataServersPorts[i]);
+            //dataServersPorts.Add(_dataServersPorts[i]);
+            // adicionar os dataServers ao dataServerMap 
+            DataServerInfo dsinfo = new DataServerInfo();
+            dsinfo.MachineHeat = 0;
+            dsinfo.dataServer = _dataServersPorts[i];
+            dataServersMap.Add(_dataServersPorts[i], dsinfo);
         }
 
         for (int i = 0; i < 6; i++)
@@ -254,10 +258,12 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         
         //3.2 Select the first enougths DataServers to store the data - DUMB WAY
         string[] selectedDataServers = new string[nbServers];
+        List<DataServerInfo> listOfDataServersAvailable = dataServersMap.Values.ToList();   
         for (int i = 0; i < nbServers; i++)
         {
+            //selectedDataServers[i] = dataServersPorts[i];
             // %% TODO - Use info from Load Balacing(dataServerMap) to decide which will go
-            selectedDataServers[i] = dataServersPorts[i];
+            selectedDataServers[i] = listOfDataServersAvailable[i].dataServer;
         }
 
 
@@ -274,6 +280,12 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         fh = new FileHandler(filename, 0, nbServers, selectedDataServers, localNames, readQuorum, writeQuorum, 1);
         //Console.WriteLine("Created new File Handle");
         
+        //4.1 (new for load balancing) update DataServerInfo of dataServerMap
+        foreach (String dsp in selectedDataServers)
+        {
+            dataServersMap[dsp].fileHandlers.Add(fh);
+        }
+
         //5. Save the File-Handler
         fileTables[Utils.whichMetaServer(filename)].Add(filename, fh);
 
@@ -677,8 +689,18 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
     public void receiveAlive(string port)
     {
-        if (!dataServersPorts.Contains(port))
-            dataServersPorts.Add(port);
+        //if (!dataServersPorts.Contains(port))
+        //{
+        //   dataServersPorts.Add(port);
+        //}
+        if (!dataServersMap.ContainsKey(port))
+        {
+            DataServerInfo dsinfo = new DataServerInfo();
+            dsinfo.MachineHeat = 0;
+            dsinfo.dataServer = port;
+            dataServersMap.Add(port, dsinfo);
+        }
+
     }
 
 
@@ -701,12 +723,17 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
 
 
-        // 1. Calculate File-Heat and update File Handlers accordingly
-        
+        // 1 Calculate File-Heat and update File Handlers accordingly
+        calculateFileHeat();
+        //At this point, dataServerMap should have the DataServerInfo as well :)
+
+
         // 2. Put DataServerInfo objects in an array, Calculate Machine-Heat, sorted by ascending order
         
+
         // 3. Match High Half with Low Half (caution to check if it's even) use thermal Dissipation
         
+
         // 4. Calculate average heat, if goal is not reached, do cicle again ( to step 2 but before recalculate Machine-Heat again)
         
         // 5. Create struture <fileHandler, arrayOfnewDataServers>>
@@ -718,7 +745,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
 
     }
-
 
 
     // To be used in 1.
