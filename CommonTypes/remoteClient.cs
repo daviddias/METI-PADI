@@ -58,6 +58,11 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         byteArrayRegisterOLD = new List<byte[]>(Constants.MAX_FILES_OPENED);
         byteArrayRegister = new List<ByteArrayRecord>(Constants.MAX_FILES_OPENED);
 
+        for (int i = 0; i < Constants.MAX_FILES_OPENED; i++)
+        {
+            byteArrayRegisterOLD.Add(null);
+        }
+
         readQUORUM = new Dictionary<string, List<TransactionDTO>>();
         writeQUORUM = new Dictionary<string,int>();
         createQUORUM = new Dictionary<string, int>();
@@ -98,7 +103,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
         for(int i = 0; i < byteArrayRegisterOLD.Capacity; i++)
         {
-            if (byteArrayRegisterOLD.ElementAtOrDefault(i) == null)
+            if (byteArrayRegisterOLD[i] == null)
                 return i;
         }
         log.Info("All byte Arrays are full"); 
@@ -590,7 +595,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         fileRegister[fileRegisterIndex] = fh;
 
         //***** TODO Mudar para new e guardar com version, content e filename :) 
-        byteArrayRegisterOLD.Add(byteArray);
+        byteArrayRegisterOLD[byteArrayRegisterIndex] = byteArray;
 
         log.Info(this.clientID + " WRITE ::  Operation Success on File: " + Utils.whichMetaServer(fh.filenameGlobal));
         return;
