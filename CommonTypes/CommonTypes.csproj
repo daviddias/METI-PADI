@@ -46,6 +46,7 @@
   <ItemGroup>
     <Compile Include="others\ByteArrayRecord.cs" />
     <Compile Include="others\Constants.cs" />
+    <Compile Include="others\DataServerInfo.cs" />
     <Compile Include="others\FileHandler.cs" />
     <Compile Include="others\TransactionDTO.cs" />
     <Compile Include="remoteClient.cs" />

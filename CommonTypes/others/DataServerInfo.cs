@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 
-class DataServerInfo
+public class DataServerInfo
 {
     public long MachineHeat;
     public List<FileHandler> fileHandlers = new List<FileHandler>();

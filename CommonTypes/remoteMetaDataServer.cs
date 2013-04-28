@@ -41,7 +41,7 @@ public interface MyRemoteMetaDataInterface{
     void fail();
     void recover();
     void dump();
-    void loadbalancing();
+    void loadBalancing();
 
 
     //usado por outros Meta-Servers
@@ -709,7 +709,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
      * 
      *                                      LOAD BALANCING STUFF
      *
-     ***********************************************************************************************/ 
+     ***********************************************************************************************/
     public void loadBalancing()
     {
         // Resume
