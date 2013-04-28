@@ -590,8 +590,8 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         fileRegister[fileRegisterIndex] = fh;
 
         //***** TODO Mudar para new e guardar com version, content e filename :) 
-        byteArrayRegisterOLD[byteArrayRegisterIndex] = byteArray;
-        
+        byteArrayRegisterOLD.Add(byteArray);
+
         log.Info(this.clientID + " WRITE ::  Operation Success on File: " + Utils.whichMetaServer(fh.filenameGlobal));
         return;
     }
