@@ -568,6 +568,8 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         //    return;
         //}
 
+        isfrozen = false;
+
         if (!Monitor.IsEntered(mutationList))
             Monitor.Enter(mutationList);
 
@@ -578,14 +580,15 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         System.Threading.Thread.Sleep(500);
 
-        // drop prepares if is off for time more than timeout
-        if (isfrozen && Convert.ToInt32(Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString())) > TIMEOUT)
+
+        // drop LOCKS if is off for time more than timeout
+        if (Convert.ToInt32(Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString())) > TIMEOUT)
         {
             mutationList.Clear();
             log.Info("[DATA_SERVER: unfreeze]    Mutation list was cleared due to time-out expiration! (" + Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString()).ToString() + " seconds)");
         }
 
-        isfrozen = false;
+        
         imAlive();
 
         Console.WriteLine("[DATA_SERVER: unfreeze]    Sucess!");
@@ -654,7 +657,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             UpdateRemoteAsyncDelegate RemoteUpdate = new UpdateRemoteAsyncDelegate(mdi[i].receiveAlive);
             IAsyncResult RemAr = RemoteUpdate.BeginInvoke((firstDataServerPort + myNumber).ToString(), null, null);
 
-            log.Info(" UPDATE SENDED::  Updated metadata table sended in background to Metadata Servers");
+            log.Info(" UPDATE SENDED:: Informed Meta-Data Server where I am present");
         }
     }
 
