@@ -122,7 +122,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1072, 420);
+            this.ClientSize = new System.Drawing.Size(967, 330);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.outputBox);
             this.Controls.Add(this.label2);
@@ -133,7 +133,7 @@
             this.Controls.Add(this.scriptTextBox);
             this.Controls.Add(this.openScriptFile);
             this.Name = "puppetMasterGUI";
-            this.Text = "padiFS - Puppet Master";
+            this.Text = "s";
             this.ResumeLayout(false);
             this.PerformLayout();
 

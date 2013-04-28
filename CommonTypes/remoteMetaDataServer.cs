@@ -354,7 +354,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public FileHandler write(string clientID, FileHandler filehandler)
     {
 
-        Boolean flag = false;
+        //Boolean flag = false; wut???
 
         //1. Is MetaServer Able to Respond (Fail)
         if (isfailed)
