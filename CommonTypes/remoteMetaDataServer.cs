@@ -32,14 +32,17 @@ public interface MyRemoteMetaDataInterface{
     FileHandler write(string clientID, FileHandler filehandler);
     void confirmWrite(string clientID, FileHandler filehander, Boolean wrote);
     void receiveUpdate(Dictionary<string, FileHandler>[] fileTable, List<String> newDataServerPorts);
-    void receiveAlive(string port); //usado pelo Data-Server para dizer que está vivo
-
     void alive(); //usado pelo cliente para verificar que este meta-data está vivo
+    
+    void receiveAlive(string port); //usado pelo Data-Server para dizer que está vivo
+    
 
     //usado pelo Puppet-Master
     void fail();
     void recover();
     void dump();
+    void loadbalancing();
+
 
     //usado por outros Meta-Servers
     Boolean lockFile(string filename);
@@ -59,8 +62,15 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     static string localPort;
     static string aMetaServerPort;
     static string bMetaServerPort;
-    static int whoAmI; //0, 2 ou 4 to identify which Meta-Server it is 
+    static int whoAmI; //0, 1 ou 2 to identify which Meta-Server it is 
     static List<string> dataServersPorts = new List<string>();
+    
+
+    // Dict used for LoadBalancing and File Allocation
+    public static Dictionary<string, DataServerInfo> dataServersMap = new Dictionary<string, DataServerInfo>();
+    
+    
+    
     static Boolean isfailed;
 
     //Array of fileTables containing file Handlers
@@ -90,7 +100,10 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         bMetaServerPort = _bMetaServerPort;
 
         for (int i = 0; i < _dataServersPorts.Length; i++)
+        {
+            // %%TODO - Pasar a adicionar ao dataServerMap 
             dataServersPorts.Add(_dataServersPorts[i]);
+        }
 
         for (int i = 0; i < 6; i++)
             fileTables[i] = new Dictionary<string, FileHandler>();
@@ -122,8 +135,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
     /* delegates */
     public delegate void prepareUpdateRemoteAsyncDelegate(Dictionary<string, FileHandler>[] newFileTable, List<string> newDataServerPorts);
-
-
 
     /* Logic */
     public string MetodoOla(){ return "[META_SERVER]   Ola eu sou o MetaData Server!"; }
@@ -244,10 +255,13 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //3.2 Select the first enougths DataServers to store the data - DUMB WAY
         string[] selectedDataServers = new string[nbServers];
         for (int i = 0; i < nbServers; i++)
+        {
+            // %% TODO - Use info from Load Balacing(dataServerMap) to decide which will go
             selectedDataServers[i] = dataServersPorts[i];
+        }
 
-        //TODO - Use info from Load Balacing to decide
 
+        
         // 3.3 Generate localfilenames
         string[] localNames = new string[nbServers];
         for (int i = 0; i < nbServers; i++)
@@ -666,4 +680,86 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         if (!dataServersPorts.Contains(port))
             dataServersPorts.Add(port);
     }
+
+
+
+    /************************************************************************************************
+     * 
+     *                                      LOAD BALANCING STUFF
+     *
+     ***********************************************************************************************/ 
+    public void loadBalancing()
+    {
+        // Resume
+        // 1. Calculate File-Heat and update File Handlers accordingly
+        // 2. Put DataServerInfo objects in an array, Calculate Machine-Heat, sorted by ascending order
+        // 3. Match High Half with Low Half (caution to check if it's even) use thermal Dissipation
+        // 4. Calculate average heat, if goal is not reached, do cicle again ( to step 2 but before recalculate Machine-Heat again)
+        // 5. Create struture <fileHandler, arrayOfnewDataServers>>
+        // 6. Do the migrations
+        // 7. Create dataServerMap again
+
+
+
+        // 1. Calculate File-Heat and update File Handlers accordingly
+        
+        // 2. Put DataServerInfo objects in an array, Calculate Machine-Heat, sorted by ascending order
+        
+        // 3. Match High Half with Low Half (caution to check if it's even) use thermal Dissipation
+        
+        // 4. Calculate average heat, if goal is not reached, do cicle again ( to step 2 but before recalculate Machine-Heat again)
+        
+        // 5. Create struture <fileHandler, arrayOfnewDataServers>>
+        
+        // 6. Do the migrations
+        
+        // 7. Create dataServerMap again
+    
+
+
+    }
+
+
+
+    // To be used in 1.
+    public void calculateFileHeat()
+    {
+    
+
+
+    }
+
+    // To be used in 2.
+    public long calculateMachineHeat()
+    {
+
+
+        return 1L;
+    }
+
+    // To be used in 3
+    public void thermalDissipation(DataServerInfo a, DataServerInfo b)
+    {
+
+
+
+    }
+
+    // To be used in 4.
+    public long averageMachineHeat(DataServerInfo[] allDSI)
+    {
+        
+        
+        return 1L;
+    }
+
+    // To be used in 4.
+    public long maxMachineHeat(DataServerInfo[] allDSI)
+    {
+        
+        
+        return 1L;
+    }
+
+
 }
