@@ -31,7 +31,6 @@ public interface MyRemoteMetaDataInterface{
     void confirmDelete(string clientID, FileHandler filehandler, Boolean deleted);
     FileHandler write(string clientID, FileHandler filehandler);
     void confirmWrite(string clientID, FileHandler filehander, Boolean wrote);
-    void receiveUpdate(Dictionary<string, FileHandler>[] fileTable, List<String> newDataServerPorts);
     void alive(); //usado pelo cliente para verificar que este meta-data está vivo
     
     void receiveAlive(string port); //usado pelo Data-Server para dizer que está vivo
@@ -47,7 +46,8 @@ public interface MyRemoteMetaDataInterface{
     //usado por outros Meta-Servers
     Boolean lockFile(string filename);
     Boolean unlockFile(string filename);
-    //TODO void updateHeatTable(List<HeatTableItem> table);
+    void receiveUpdate(Dictionary<string, FileHandler>[] fileTable, Dictionary<string, DataServerInfo>[] newDataServersMap);
+
 }
 
 
@@ -138,7 +138,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public override object InitializeLifetimeService(){ return null; }
 
     /* delegates */
-    public delegate void prepareUpdateRemoteAsyncDelegate(Dictionary<string, FileHandler>[] newFileTable, List<string> newDataServerPorts);
+    public delegate void prepareUpdateRemoteAsyncDelegate(Dictionary<string, FileHandler>[] newFileTable, Dictionary<string, DataServerInfo>[] newDataServersMap);
 
     /* Logic */
     public string MetodoOla(){ return "[META_SERVER]   Ola eu sou o MetaData Server!"; }
@@ -249,7 +249,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         //3. Decide where the fill will be hosted
         //3.1 There are enought Data Servers in the system to meet the required replication?
-        if (nbServers > dataServersPorts.Count)
+        if (nbServers > dataServersMap.Count)
+            //dataServersPorts.Count)
         {
             log.Info("[METASERVER: create]    There aren't enought Data Servers to meet the required replication");
             fh = new FileHandler(filename, 0, 0, new string[0], new string[0], readQuorum, writeQuorum, 1); // if there aren't enough data servers meta server sends always nbServer = 0 
@@ -558,7 +559,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         log.Info(s);
 
         System.Console.WriteLine("I know this DATA-SERVERS:");
-        foreach (string port in dataServersPorts)
+        foreach (string port in dataServersMap.Keys)
         {
             System.Console.WriteLine(port);
         }
@@ -581,10 +582,13 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         mdi[0] = Utils.getRemoteMetaDataObj(aMetaServerPort);
         mdi[1] = Utils.getRemoteMetaDataObj(bMetaServerPort);
 
+        Dictionary<string, DataServerInfo>[] dataServersMap_toSend = new Dictionary<string, DataServerInfo>[1];
+        dataServersMap_toSend[0] = dataServersMap;
+
         for (int i = 0; i < 2; i++)
         {
             prepareUpdateRemoteAsyncDelegate RemoteUpdate = new prepareUpdateRemoteAsyncDelegate(mdi[i].receiveUpdate);
-            IAsyncResult RemAr = RemoteUpdate.BeginInvoke(fileTables, dataServersPorts, null, null);
+            IAsyncResult RemAr = RemoteUpdate.BeginInvoke(fileTables, dataServersMap_toSend, null, null);
 
             log.Info(" UPDATE SENDED::  Updated metadata table sended in background to others Metadata Servers");
         }
@@ -631,19 +635,23 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         }
     }
 
-    public void receiveUpdate(Dictionary<string, FileHandler>[] newFileTable, List<string> newDataServersPorts)
+    public void receiveUpdate(Dictionary<string, FileHandler>[] newFileTable, Dictionary<string, DataServerInfo>[] newDataServersMap_received)
     {
+        log.Info("receiveUpdated call received");
+
         for (int i = 0; i < 6; i++)
             if (i != whoAmI * 2 || i != whoAmI * 2 + 1) // dont update the files that it is responsible
                 fileTables[i] = newFileTable[i];
 
-        // save the filetables to disk on a file
+        Dictionary<string, DataServerInfo> newDataServersMap = newDataServersMap_received[0];
 
-        foreach (string newPort in newDataServersPorts) {
-            if (dataServersPorts.Find(p => p == newPort) == null) {
+        foreach (string newPort in newDataServersMap.Keys) {
+            if (!dataServersMap.ContainsKey(newPort)){
                 dataServersPorts.Add(newPort);
             }
         }
+
+        // save the filetables to disk on a file
 
         for (int i = 0; i < 6; i++)
         {
