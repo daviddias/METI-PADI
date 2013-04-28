@@ -166,7 +166,10 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             fh.isOpen = true;
         fh.byWhom.Add(clientID);
 
-        //4. Tells the other MetaServers to update
+        //4. Increment access count to this file
+        fh.nFileAccess++;
+
+        //5. Tells the other MetaServers to update
         sendUpdate();
 
         log.Info("[METASERVER: open]    Success)!");
@@ -201,11 +204,16 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //3. Updates the respective File-Handle by removing this user from the byWhom list
         filehandler.byWhom.Remove(ClientID);
 
-        //4. Tells the other MetaServers to update
+        //4. Increment access count to this file
+        filehandler.nFileAccess++;
+
+        //5. Tells the other MetaServers to update
         sendUpdate();
 
         log.Info("[METASERVER: close]    Success)!");
     }
+
+
 
     public FileHandler create(string clientID, string filename, int nbServers, int readQuorum, int writeQuorum)
     {
@@ -283,16 +291,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
 
 
-
-
-
-
-
-
-
-
-
-
     public FileHandler delete(string clientID, string filename)
     {
 
@@ -323,7 +321,10 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //5.Faz lock ao ficheiro
         fh.isLocked = true;
 
-        //4. Return the filehandler
+        //6. Increment access count to this file
+        fh.nFileAccess++;
+
+        //7. Return the filehandler
         log.Info("[METASERVER: delete]    Success!");
         return fh;
     }
@@ -350,6 +351,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         fileTables[Utils.whichMetaServer(filehandler.filenameGlobal)][filehandler.filenameGlobal].isLocked = false;
         log.Info("[METASERVER: confirmDelete]    File was not deleted!");
     }
+
+
 
     public FileHandler write(string clientID, FileHandler filehandler)
     {
@@ -387,7 +390,10 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //5.Faz lock ao ficheiro
         filehandler.isLocked = true;
 
-        //6. Devolve o filehandler ao cliente
+        //6. Increment access count to this file
+        filehandler.nFileAccess++;
+
+        //8. Devolve o filehandler ao cliente
         log.Info("[METASERVER: write]    Success!");
         return filehandler;
     }
@@ -404,6 +410,10 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //2. Faz unlock ao ficheiro
         filehandler.isLocked = false;
         log.Info("[METASERVER: confirmWrite]    Success!");
+
+        //3. Updates file
+        fileTables[Utils.whichMetaServer(filehandler.filenameGlobal)][filehandler.filenameGlobal].fileSize = filehandler.fileSize;
+
         
         // 3. Send Updated metadata table to others Metadata Servers
         sendUpdate();

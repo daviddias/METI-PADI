@@ -53,10 +53,11 @@ public class FileHandler
     public override string ToString()
     {
         string s = "Filename: " + this.filenameGlobal + "\n";
-        s += "\t" + "Size - " + this.fileSize + "\n";
+        s += "\t" + "Size - " + this.fileSize + " (bytes)\n";
         s += "\t" + "Number of Data Severs - " + this.nbServers + "\n";
         s += "\t" + "Read Quorum - " + this.readQuorum + "\n";
         s += "\t" + "Write Quorum - " + this.writeQuorum + "\n";
+        s += "\t" + "Number of accesses - " + this.nFileAccess+ "\n";
 
         s += "\t" + "DataServers where the file is open:\n";
         s += "\t\t\tDataServer\tLocal Filename\n";

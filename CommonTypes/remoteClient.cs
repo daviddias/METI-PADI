@@ -583,10 +583,10 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             }
         }
 
-       
+        //6. Updates File Size 
+        fh.fileSize = byteArray.LongLength;
 
-
-        //6. Tell Meta-Data Server to Confirm Creation 
+        //7. Tell Meta-Data Server to Confirm Creation 
         MyRemoteMetaDataInterface mdiConfirm = Utils.getMetaDataRemoteInterface(fh.filenameGlobal, metaServerPorts);
         mdi.confirmWrite(this.clientID, fh, true);
         
