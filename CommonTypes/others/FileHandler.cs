@@ -58,6 +58,8 @@ public class FileHandler
         s += "\t" + "Read Quorum - " + this.readQuorum + "\n";
         s += "\t" + "Write Quorum - " + this.writeQuorum + "\n";
         s += "\t" + "Number of accesses - " + this.nFileAccess+ "\n";
+        s += "\t" + "Version - " + this.version + "\n";
+
 
         s += "\t" + "DataServers where the file is open:\n";
         s += "\t\t\tDataServer\tLocal Filename\n";

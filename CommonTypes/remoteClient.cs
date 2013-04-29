@@ -519,6 +519,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         // Update the version
         fh.version = fh.version + 1;
 
+        log.Info("VERSION BEFORE PREPARE!!! " + fh.version);
+
+
         //4. Contact Data-Servers to Prepare
         log.Info(this.clientID + " WRITE ::  Iniciating 2PC for File: " + Utils.whichMetaServer(fh.filenameGlobal));
         string transactionID = Utils.generateTransactionID();
@@ -593,8 +596,8 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         //Update client file handler and save the content in ByteArrayRegister
         fh.isLocked = false; //update the file handler on client side 
         fileRegister[fileRegisterIndex] = fh;
+        log.Info("VERSION AFTER COMMIT!!! " + fh.version);
 
-        //***** TODO Mudar para new e guardar com version, content e filename :) 
 
         byteArrayRegisterOLD[byteArrayRegisterIndex] = byteArray;
 

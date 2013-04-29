@@ -47,6 +47,8 @@ public interface MyRemoteMetaDataInterface{
     Boolean lockFile(string filename);
     Boolean unlockFile(string filename);
     void receiveUpdate(Dictionary<string, FileHandler>[] fileTable, Dictionary<string, DataServerInfo>[] newDataServersMap);
+    void sendUpdate();
+
 
 }
 
@@ -64,6 +66,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     static string bMetaServerPort;
     static int whoAmI; //0, 1 ou 2 to identify which Meta-Server it is 
     static List<string> dataServersPorts = new List<string>();
+    static Boolean recovering = false;
     
 
     // Dict used for LoadBalancing and File Allocation
@@ -139,6 +142,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
     /* delegates */
     public delegate void prepareUpdateRemoteAsyncDelegate(Dictionary<string, FileHandler>[] newFileTable, Dictionary<string, DataServerInfo>[] newDataServersMap);
+    public delegate void askUpdateRemoteAsyncDelegate();
+
 
     /* Logic */
     public string MetodoOla(){ return "[META_SERVER]   Ola eu sou o MetaData Server!"; }
@@ -440,7 +445,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         //3. Updates file
         fileTables[Utils.whichMetaServer(filehandler.filenameGlobal)][filehandler.filenameGlobal].fileSize = filehandler.fileSize;
-
+        fileTables[Utils.whichMetaServer(filehandler.filenameGlobal)][filehandler.filenameGlobal].version = filehandler.version;
         
         // 3. Send Updated metadata table to others Metadata Servers
         sendUpdate();
@@ -475,57 +480,58 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     }
 
     public void recover() {
-        //if (isfailed == false)
-        //{
-        //    log.Info("[METASERVER: recover]    The server was not failed!");
-        //    return;
-        //}
+        log.Info("Starting recovering procedure");
 
-        BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
-        provider.TypeFilterLevel = TypeFilterLevel.Full;
-        IDictionary props = new Hashtable();
-        //props["port"] = 8081;
-        props["port"] = localPort;
-        props["name"] = localPort;
-        TcpChannel channel = new TcpChannel(props, null, provider);
-        ChannelServices.RegisterChannel(channel, false);
-
-        for (int i = 0; i < 6; i++)
+        if (isfailed)
         {
-            StreamReader sw = new StreamReader("backup-m" + whoAmI + "_table-" + i);
-            string s = sw.ReadLine();
-            while(!s.Equals(""))
+            log.Info("Registering again remote object for remote calls");
+            BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
+            provider.TypeFilterLevel = TypeFilterLevel.Full;
+            IDictionary props = new Hashtable();
+            //props["port"] = 8081;
+            props["port"] = localPort;
+            props["name"] = localPort;
+            TcpChannel channel = new TcpChannel(props, null, provider);
+            ChannelServices.RegisterChannel(channel, false);
+
+        
+            for (int i = 0; i < 6; i++)
             {
-                char p = '|';
-                string[] parsed = s.Split(p);
+                StreamReader sw = new StreamReader("backup-m" + whoAmI + "_table-" + i);
+                string s = sw.ReadLine();
+                while(!s.Equals(""))
+                {
+                    char p = '|';
+                    string[] parsed = s.Split(p);
 
-                string filenameGlobal = parsed[0];
-                long fileSize = long.Parse(parsed[1]);
-                int nbServers = int.Parse(parsed[2]);
-                string[] dataPorts = parsed[3].Split(':');
-                int readQuorum = int.Parse(parsed[4]);
-                int writeQuorum = int.Parse(parsed[5]);
-                long nFileAccess = long.Parse(parsed[6]);
-
-
-                string[] dataFileNames = parsed[7].Split(':');
-                string[] localNames = new string[nbServers];
-                for (int j = 0; j < nbServers; j++)
-                    localNames[j] = dataFileNames[i].Split('>')[1];
+                    string filenameGlobal = parsed[0];
+                    long fileSize = long.Parse(parsed[1]);
+                    int nbServers = int.Parse(parsed[2]);
+                    string[] dataPorts = parsed[3].Split(':');
+                    int readQuorum = int.Parse(parsed[4]);
+                    int writeQuorum = int.Parse(parsed[5]);
+                    long nFileAccess = long.Parse(parsed[6]);
 
 
-                FileHandler fh = new FileHandler(filenameGlobal, fileSize, nbServers, dataPorts, localNames, readQuorum, writeQuorum, nFileAccess);
-                fh.version =long.Parse(parsed[8]);
-                fh.isOpen = bool.Parse(parsed[9]);
+                    string[] dataFileNames = parsed[7].Split(':');
+                    string[] localNames = new string[nbServers];
+                    for (int j = 0; j < nbServers; j++)
+                        localNames[j] = dataFileNames[i].Split('>')[1];
 
-                fileTables[i].Add(filenameGlobal, fh);
 
-                s = sw.ReadLine();
-                }
-                sw.Close();
+                    FileHandler fh = new FileHandler(filenameGlobal, fileSize, nbServers, dataPorts, localNames, readQuorum, writeQuorum, nFileAccess);
+                    fh.version =long.Parse(parsed[8]);
+                    fh.isOpen = bool.Parse(parsed[9]);
+
+                    fileTables[i].Add(filenameGlobal, fh);
+
+                    s = sw.ReadLine();
+                    }
+                    sw.Close();
+            }
         }
-
-        // TODO: Get filetables from other metaservers on recover
+        log.Info("Going to Request UPDATE on recovering");
+        askForUpdate();
     }
 
     public void dump()
@@ -570,9 +576,26 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     /************************************************************************
      *              Invoked Methods by other Meta-Data Servers
      ************************************************************************/
-    public Boolean lockFile(string Filename) { return true; }
+    public Boolean lockFile(string Filename) {
 
-    public Boolean unlockFile(string Filename) { return true; }
+        if (fileTables[Utils.whichMetaServer(Filename)][Filename].isLocked)
+            log.Info("[METASERVER: lockFile]    The File was already locked! (not normal)");
+
+        fileTables[Utils.whichMetaServer(Filename)][Filename].isLocked = true;
+
+        log.Info("[METASERVER: lockFile]    File Locked Successful!");
+        return true; 
+    }
+
+    public Boolean unlockFile(string Filename) {
+        if (!fileTables[Utils.whichMetaServer(Filename)][Filename].isLocked)
+            log.Info("[METASERVER: lockFile]    The File was already locked! (not normal)");
+
+        fileTables[Utils.whichMetaServer(Filename)][Filename].isLocked = false;
+
+        log.Info("[METASERVER: lockFile]    File Locked Successful!");    
+        return true; 
+    }
 
     //public void updateHeatTable(List<HeatTableItem> table) { }
 
@@ -640,8 +663,14 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         log.Info("receiveUpdated call received");
 
         for (int i = 0; i < 6; i++)
-            if (i != whoAmI * 2 || i != whoAmI * 2 + 1) // dont update the files that it is responsible
+            if (recovering)
+            {
                 fileTables[i] = newFileTable[i];
+            }
+            else if (i != whoAmI * 2 || i != whoAmI * 2 + 1) // dont update the files that it is responsible
+                fileTables[i] = newFileTable[i];
+
+        recovering = false;
 
         Dictionary<string, DataServerInfo> newDataServersMap = newDataServersMap_received[0];
 
@@ -711,6 +740,24 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
     }
 
+    public void askForUpdate()
+    {
+        MyRemoteMetaDataInterface[] mdi = new MyRemoteMetaDataInterface[2];
+        mdi[0] = Utils.getRemoteMetaDataObj(aMetaServerPort);
+        mdi[1] = Utils.getRemoteMetaDataObj(bMetaServerPort);
+
+        recovering = true;
+
+        for (int i = 0; i < 2; i++)
+        {
+            askUpdateRemoteAsyncDelegate RemoteUpdate = new askUpdateRemoteAsyncDelegate(mdi[i].sendUpdate);
+            IAsyncResult RemAr = RemoteUpdate.BeginInvoke(null, null);
+
+            log.Info(" REQUEST UPDATE SENDED::  Contacted other metaservers to ask for theis updates!");
+        }
+
+
+    }
 
 
     /************************************************************************************************
