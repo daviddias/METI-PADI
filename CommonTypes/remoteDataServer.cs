@@ -1,20 +1,23 @@
-﻿using log4net;
+﻿using CommonTypes;
+using log4net;
 using System;
-using System.Collections.Generic;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Remoting;
-using System.Runtime.Remoting.Messaging;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Tcp;
-using CommonTypes;
+using System.Runtime.Remoting.Messaging;
 using System.Runtime.Serialization.Formatters;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
+
 
 
 
@@ -47,7 +50,8 @@ public interface MyRemoteDataInterface
     void dump();
 }
 
-public class MutationListItem {
+public class MutationListItem
+{
     public string filename;
     public string clientID;
     public byte[] byte_array;
@@ -120,6 +124,66 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     }
 
     public override object InitializeLifetimeService() { return null;  }
+
+    private void saveStateToDisk()
+    {
+        File.Create("backup-state").Close();
+        StreamWriter sw = new StreamWriter("backup-state");
+
+        sw.WriteLine("Files");
+        foreach (string filename in fileAndVersion.Keys)
+        {
+            sw.WriteLine(filename + ":" + fileAndVersion[filename]);
+        }
+
+        //sw.WriteLine("MutationList");
+        //using (var ms = new MemoryStream())
+        //{
+        //    var formatter = new BinaryFormatter();
+        //    formatter.Serialize(ms, mutationList);
+        //    var bytes = Convert.ToBase64String(ms.ToArray());
+        //    sw.WriteLine(bytes);
+        //}
+
+        sw.Close();
+    }
+
+    private void recoverStateFromDisk()
+    {
+        StreamReader sr = null;
+        try
+        {
+            sr = new StreamReader("backup-state");
+        }
+        catch (FileNotFoundException)
+        {
+            System.Console.WriteLine("No previous state to recover");
+            return;
+        }
+
+        string line = sr.ReadLine();
+
+        mutationList.Clear();
+        fileAndVersion.Clear();
+
+        if(line.Equals("Files"))
+            //while (!line.Equals("MutationList"))
+            while (!sr.EndOfStream)
+            {
+                string[] l = sr.ReadLine().Split(':');
+                fileAndVersion.Add(l[0], Convert.ToInt32(l[1]));
+                line = sr.ReadLine();
+            }
+
+        //line = sr.ReadLine();
+        //byte[] bytes = Convert.FromBase64String(line);
+        //MemoryStream stream = new MemoryStream(bytes);
+        //var formatter = new BinaryFormatter();
+        //formatter.Deserialize(stream);
+
+        sr.Close();
+    }
+
 
     // Communication Test Method
     public string MetodoOla()  { return "[DATA_SERVER]   Ola eu sou o Data Server!";  }
@@ -209,7 +273,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
 
 
-    public TransactionDTO  read(TransactionDTO dto)
+    public TransactionDTO read(TransactionDTO dto)
     {
         TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameForDataServer);
         // this method is limited to 2^32 byte files (4.2 GB)
@@ -604,6 +668,8 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             return;
         }
 
+        saveStateToDisk();
+
         IChannel[] defaultTCPChannel = ChannelServices.RegisteredChannels;
         for (int channelCount = 0; channelCount < defaultTCPChannel.Length; channelCount++)
         {
@@ -616,7 +682,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             }
         }
 
-        
+
 
         isfailed = true;
         timeOff = DateTime.Now; // save actual time
@@ -630,6 +696,8 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         //    Console.WriteLine("[DATA_SERVER: recover]    The server was not failed!");
         //    return;
         //}
+
+        recoverStateFromDisk();
 
         BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
         provider.TypeFilterLevel = TypeFilterLevel.Full;
