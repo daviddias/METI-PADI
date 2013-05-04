@@ -30,7 +30,7 @@ public class FileHandler
 
     /* Mutual exclusion */
     public bool isLocked = false;
-    string byWho;
+    public string byWho;
 
     /* Constructor */
     public FileHandler(String fileName, long fileSize, int nbServers,

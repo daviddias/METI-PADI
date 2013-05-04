@@ -11,7 +11,7 @@ public class DataServerInfo
     public List<FileHandler> fileHandlers = new List<FileHandler>();
     public string dataServer; //The data server port which acts as an ID
 
-    public DataServerInfo(long MachineHeat, List<FileHandler> fileHandlers, string dataServer)
+    public DataServerInfo(double MachineHeat, List<FileHandler> fileHandlers, string dataServer)
     {
         this.MachineHeat = MachineHeat;
         this.fileHandlers = fileHandlers;
