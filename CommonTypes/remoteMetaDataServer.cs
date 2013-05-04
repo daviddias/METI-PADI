@@ -196,7 +196,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         return fh;
     }
 
-    public void close(string ClientID, FileHandler filehandler){
+    public void close(string ClientID, FileHandler filehandlerReceived){
         /* 1. Is MetaServer Able to Respond  (Fail)
          * 2. Has this client a lock in this file? (If yes, denied close)
          * 3. Updates the respective File-Handle by removing this user from the byWhom list
@@ -212,6 +212,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             return;
         }
 
+        FileHandler filehandler = fileTables[Utils.whichMetaServer(filehandlerReceived.filenameGlobal)][filehandlerReceived.filenameGlobal];
 
         //2. Has this client a lock in this file? (If yes, denied close)
         if (filehandler.isLocked)
@@ -220,15 +221,18 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             return;
         }
 
-
         //3. Updates the respective File-Handle by removing this user from the byWhom list
         filehandler.byWhom.Remove(ClientID);
 
         //4. Increment access count to this file
         filehandler.nFileAccess++;
 
-        //5. Tells the other MetaServers to update
+        //5. Put isOpen a false
+        filehandler.isOpen = false;
+
+        //6. Tells the other MetaServers to update
         sendUpdate();
+
 
         log.Info("[METASERVER: close]    Success)!");
     }
@@ -777,70 +781,215 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         // 7. Create dataServerMap again
 
 
-
         // 1 Calculate File-Heat and update File Handlers accordingly
+        log.Info("[LOADBALANCING]    Going to calculate File-Heats!");
         calculateFileHeat();
         //At this point, dataServerMap should have the DataServerInfo as well :)
 
+        // 2. Calculate each Machine Heat and create an Array of DataServerInfo objects , sorted by ascending order
+        calculateMachineHeat();
+               
+        var dataServerMapClone = dataServersMap.ToDictionary(entry => entry.Key, entry => entry.Value);
+        List<DataServerInfo> sortedDataServerInfo = new List<DataServerInfo>(dataServerMapClone.Values);
 
-        // 2. Put DataServerInfo objects in an array, Calculate Machine-Heat, sorted by ascending order
+        log.Info("[LOADBALANCING]    Machine Heat Before Load Balance:");
         
+        int cicles = 0;
 
-        // 3. Match High Half with Low Half (caution to check if it's even) use thermal Dissipation
-        
+        do
+        {
+            sortedDataServerInfo.Sort((s1, s2) => s1.MachineHeat.CompareTo(s2.MachineHeat)); //SORTING LIKE A BOSS =D
 
-        // 4. Calculate average heat, if goal is not reached, do cicle again ( to step 2 but before recalculate Machine-Heat again)
-        
+            System.Console.WriteLine("SORTED DATA SERVER INFO");
+            foreach (DataServerInfo dsi in sortedDataServerInfo) { System.Console.WriteLine("DataServer - " + dsi.dataServer + "   Heat: " + dsi.MachineHeat); }
+            
+            cicles++;
+
+            // 3. Match High Half with Low Half (caution to check if it's even) use thermal Dissipation
+            int iterations = sortedDataServerInfo.Count / 2;
+            int first_position = 0;
+            int last_position = sortedDataServerInfo.Count - 1;
+
+            log.Info("[LOADBALANCING]    Going to start the matching process!");
+            System.Console.WriteLine("Number of Iterations: " + iterations);
+            
+            for (int i = 0; i < iterations; i++)
+            {    
+                thermalDissipation(sortedDataServerInfo[first_position + i], sortedDataServerInfo[last_position - i]);
+            }
+
+            log.Info("[LOADBALANCING]    Cicle Done!");
+            
+            // 4. Calculate average heat, if goal is not reached, do cicle again ( to step 2 but before recalculate Machine-Heat again)
+            if (cicles > Constants.LOADBALANCER_CICLE_LIMIT)
+                break;
+            
+            log.Info("[LOADBALANCING]    Going to calculate machine heats!");
+            calculateMachineHeatClone(sortedDataServerInfo);
+
+            foreach (DataServerInfo dsi in sortedDataServerInfo)
+            {
+                System.Console.WriteLine("Data Server: " + dsi.dataServer + "   Heat: " + dsi.MachineHeat);
+            }
+  
+        } while ( !(maxMachineHeat(sortedDataServerInfo) <= (averageMachineHeat(sortedDataServerInfo) * Constants.LOADBALANCER_THRESHOLD))); 
+
         // 5. Create struture <fileHandler, arrayOfnewDataServers>>
+        log.Info("[LOADBALANCING]    Going to create migrationDataStructure!");
+        Dictionary<FileHandler, List<string>> migrationData = createMigrationDataStructure(sortedDataServerInfo);
+
+        log.Info("[LOADBALANCING]    Machine Heat After Load Balance:");
+
+        foreach (DataServerInfo dsi in sortedDataServerInfo) {
+            System.Console.WriteLine("Data Server: " + dsi.dataServer + "   Heat: " + dsi.MachineHeat);
+        }
         
         // 6. Do the migrations
         
-        // 7. Create dataServerMap again
+        // 7. Update dataServerMap again
     
 
 
     }
 
+
+    //Calculate number of total accesses
+    public long TotalAccesses() {
+
+        long total = 0;
+
+        for (int i = 0; i < 6; i++) {
+            foreach (FileHandler fh in fileTables[i].Values) {
+                total += fh.nFileAccess;
+            }
+        }
+
+        return total;
+    }
 
     // To be used in 1.
     public void calculateFileHeat()
     {
-    
-
+        long numberOfTotalAccesses = TotalAccesses();
+        for (int i = 0; i < 6; i++)
+        {
+            foreach (FileHandler fh in fileTables[i].Values)
+            {
+                long fileSize = fh.fileSize;
+                if (fileSize <= 0) fileSize = 1; //Avoid Log(0)
+                fh.heat = (double) (fh.nFileAccess / (double) numberOfTotalAccesses) + (double) Math.Log10(fileSize);
+            }
+        }
 
     }
 
     // To be used in 2.
-    public long calculateMachineHeat()
+    public void calculateMachineHeat()
     {
+        foreach (DataServerInfo dsi in dataServersMap.Values) {
+            double sum = 0;
+        
+            foreach (FileHandler fh in dsi.fileHandlers) {
+                sum += fh.heat;
+            }
+            dsi.MachineHeat = sum;
+        }
+        return;
+    }
 
+    // To be used in 2
+    public void calculateMachineHeatClone(List<DataServerInfo> sortedDataServerInfo)
+    {
+            foreach (DataServerInfo dsi in sortedDataServerInfo)
+        {
+            double sum = 0;
 
-        return 1L;
+            foreach (FileHandler fh in dsi.fileHandlers)
+            {
+                sum += fh.heat;
+            }
+            dsi.MachineHeat = sum;
+        }
     }
 
     // To be used in 3
-    public void thermalDissipation(DataServerInfo a, DataServerInfo b)
+    public void thermalDissipation(DataServerInfo coldest, DataServerInfo hotest)
     {
+        int index = 0;
 
+        if (hotest.fileHandlers.Count <= 0)
+            return;     //Sossega a bicharola!
 
+        while (index < hotest.fileHandlers.Count){
+            if (coldest.fileHandlers.Contains(hotest.fileHandlers[index]) || hotest.fileHandlers[index].isOpen){
+                index++;
+                continue;
+            }
+            coldest.fileHandlers.Add(hotest.fileHandlers[index]);
+            hotest.fileHandlers.Remove(hotest.fileHandlers[index]);
+            break;
+        }
 
     }
 
     // To be used in 4.
-    public long averageMachineHeat(DataServerInfo[] allDSI)
+    public double averageMachineHeat(List<DataServerInfo> allDSI)
     {
-        
-        
-        return 1L;
+        double sum = 0;
+
+        foreach (DataServerInfo dsi in allDSI) {
+            sum += dsi.MachineHeat;
+        }
+
+        return (double) ((double)sum/(double)dataServersMap.Count);
     }
 
     // To be used in 4.
-    public long maxMachineHeat(DataServerInfo[] allDSI)
+    public double maxMachineHeat(List<DataServerInfo> allDSI)
     {
+        double max = 0;
+
+        foreach (DataServerInfo dsi in allDSI) {
+            if (dsi.MachineHeat > max)
+                max = dsi.MachineHeat;
+        }
         
-        
-        return 1L;
+        return max;
+    }
+   
+    // To be used in 4.
+    public double minMachineHeat(List<DataServerInfo> allDSI)
+    {
+        double min = long.MaxValue;
+
+        foreach (DataServerInfo dsi in allDSI)
+        {
+            if (dsi.MachineHeat < min)
+                min = dsi.MachineHeat;
+        }
+
+        return min;
     }
 
+    public Dictionary<FileHandler, List<string>> createMigrationDataStructure(List<DataServerInfo> dsi_list) {
+        
+        Dictionary<FileHandler, List<string>> ret = new Dictionary<FileHandler, List<string>>();
+        List<string> dataservers;
+        
+        foreach (DataServerInfo dsi in dsi_list) {
+            foreach (FileHandler fh in dsi.fileHandlers) {
+                if (ret.Keys.Contains(fh))
+                {
+                    ret[fh].Add(dsi.dataServer);
+                }
+                else {
+                    dataservers = new List<string>();
+                    dataservers.Add(dsi.dataServer);
+                    ret.Add(fh, dataservers);
+                }
+            }
+        }
+        return ret;
+    }
 
 }

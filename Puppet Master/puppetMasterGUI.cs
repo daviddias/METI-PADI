@@ -157,7 +157,7 @@ namespace Puppet_Master
                     break;
                 case "TRANSFER": transfer(parsed[1], parsed[2], parsed[3]); break;
                 case "EXESCRIPT": exeScript(parsed[1], parsed[2]); break;
-
+                case "LOADBALANCE": loadbalance(parsed[1]); break;
                 case "HELLO": hello(parsed[1]); break;
             }
         }
@@ -687,6 +687,18 @@ namespace Puppet_Master
             }
             if (process[0] == 'm') { }
             if (process[0] == 'd') { }
+        }
+
+        private void loadbalance(string process) {
+            if (process.StartsWith("m-"))
+            {
+                MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(listOfMetaServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
+                RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.loadBalancing);
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
+            }
+            else {
+                outputBox.Text = "Invalid process";
+            }
         }
     }
 }

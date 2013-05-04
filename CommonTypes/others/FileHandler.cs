@@ -17,6 +17,7 @@ public class FileHandler
     public int writeQuorum;
     public long nFileAccess;
     public long version;
+    public double heat;
     public Dictionary<string, string> dataServersFiles = new Dictionary<string, string>(); // store the local filename for each dataserver (dataserver, localFileName)
 
 

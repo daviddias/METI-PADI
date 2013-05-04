@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 [Serializable]
 public class DataServerInfo
 {
-    public long MachineHeat;
+    public double MachineHeat;
     public List<FileHandler> fileHandlers = new List<FileHandler>();
     public string dataServer; //The data server port which acts as an ID
 
