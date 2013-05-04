@@ -65,6 +65,7 @@
             this.runScript.TabIndex = 2;
             this.runScript.Text = "Run Script";
             this.runScript.UseVisualStyleBackColor = true;
+            this.runScript.Click += new System.EventHandler(this.runScript_Click);
             // 
             // runNextStep
             // 

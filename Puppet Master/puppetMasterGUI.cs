@@ -83,6 +83,18 @@ namespace Puppet_Master
         }
 
 
+        private void runScript_Click(object sender, EventArgs e)
+        {
+            while (true)
+            {
+                String[] lines = scriptTextBox.Lines;
+                try { if (lines[0] == "") { return; } }
+                catch (IndexOutOfRangeException) { return; }
+                executeNextStep();
+                System.Threading.Thread.Sleep(1000);
+            }
+        }
+
 
         /* check if process is running */
         private Boolean isRunning(string process)
@@ -700,5 +712,7 @@ namespace Puppet_Master
                 outputBox.Text = "Invalid process";
             }
         }
+
+        
     }
 }
