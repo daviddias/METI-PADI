@@ -145,6 +145,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public delegate void askUpdateRemoteAsyncDelegate();
 
 
+
     /* Logic */
     public string MetodoOla(){ return "[META_SERVER]   Ola eu sou o MetaData Server!"; }
 
@@ -832,19 +833,28 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
                 System.Console.WriteLine("Data Server: " + dsi.dataServer + "   Heat: " + dsi.MachineHeat);
             }
   
-        } while ( !(maxMachineHeat(sortedDataServerInfo) <= (averageMachineHeat(sortedDataServerInfo) * Constants.LOADBALANCER_THRESHOLD))); 
+        } while ( !(maxMachineHeat(sortedDataServerInfo) <= (averageMachineHeat(sortedDataServerInfo) * Constants.LOADBALANCER_THRESHOLD)));
+
+        log.Info("[LOADBALANCING]    Machine Heat After Load Balance:");
+
+        foreach (DataServerInfo dsi in sortedDataServerInfo)
+        {
+            System.Console.WriteLine("Data Server: " + dsi.dataServer + "   Heat: " + dsi.MachineHeat);
+        }
 
         // 5. Create struture <fileHandler, arrayOfnewDataServers>>
         log.Info("[LOADBALANCING]    Going to create migrationDataStructure!");
         Dictionary<FileHandler, List<string>> migrationData = createMigrationDataStructure(sortedDataServerInfo);
 
-        log.Info("[LOADBALANCING]    Machine Heat After Load Balance:");
-
-        foreach (DataServerInfo dsi in sortedDataServerInfo) {
-            System.Console.WriteLine("Data Server: " + dsi.dataServer + "   Heat: " + dsi.MachineHeat);
+        foreach (FileHandler fh in migrationData.Keys) {
+            System.Console.WriteLine("File: " + fh.filenameGlobal + ":");
+            foreach (string dataserver in migrationData[fh]) {
+                System.Console.WriteLine("DataServer: " + dataserver);
+            }
         }
         
         // 6. Do the migrations
+
         
         // 7. Update dataServerMap again
     
