@@ -41,6 +41,7 @@ public interface MyRemoteMetaDataInterface{
     void recover();
     void dump();
     void loadBalancing();
+    void loadBalanceDump();
 
 
     //usado por outros Meta-Servers
@@ -1086,4 +1087,28 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     {
     }
 
+    // LoadBalance Results
+    public void loadBalanceDump() {
+
+        log.Info("[METASERVER: LBDump]    Entered Dump");
+
+        int LINES = 20;
+        int COLUMNS = 16;
+
+        List<DataServerInfo> allDSI = new List<DataServerInfo>();
+        double average = averageMachineHeat(allDSI);
+
+        char[][] chart = new char[LINES][];
+
+        log.Info("[METASERVER: LBDump]    Going to print chart!");
+
+        // Print chart
+        for (int i = 0; i < LINES; i++) {
+            string s = "    ";
+            for (int j = 0; j < COLUMNS; j++) {
+                s += "*";
+            }
+            System.Console.WriteLine(s);
+        }
+    }
 }
