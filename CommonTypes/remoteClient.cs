@@ -821,21 +821,25 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         System.Console.WriteLine("Opened files by this client:");
         System.Console.WriteLine();
 
-        foreach (FileHandler fh in fileRegister)
+        FileHandler fh;
+        for (int i = 0; i < fileRegister.Count; i++)
         {
-            System.Console.WriteLine("      Filename: " + fh.filenameGlobal + "    Version: " + fh.version);
+                fh = fileRegister[i];
+                System.Console.WriteLine("[" + i + "]       Filename: " + fh.filenameGlobal + "    Version: " + fh.version);
         }
+
         System.Console.WriteLine();
 
         System.Console.WriteLine("Byte-Array records in this client:");
         System.Console.WriteLine();
 
-        int i = 0;
-        foreach (byte[] item in byteArrayRegisterOLD)
+        for (int i = 0; i < 10; i++)
         {
-            System.Console.WriteLine("["+ i + "]    Content: " + System.Text.Encoding.Default.GetString(item));
+            if(byteArrayRegisterOLD[i] != null)
+                System.Console.WriteLine("[" + i + "]    Content: " + System.Text.Encoding.Default.GetString(byteArrayRegisterOLD[i]));
             i++;
         }
+
         System.Console.WriteLine();
     }
 
