@@ -1151,22 +1151,39 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         log.Info("[METASERVER: LBDump]    Entered Dump");
 
         int LINES = 20;
-        int COLUMNS = 16;
+        int COLUMNS = 50;
 
         List<DataServerInfo> allDSI = new List<DataServerInfo>();
         double average = averageMachineHeat(allDSI);
+        double maxheat = maxMachineHeat(allDSI);
+
+        string top_c =   "_____ ";
+        string torso_c = "|   | ";
+        string empty_c = "      ";
 
         char[][] chart = new char[LINES][];
 
         log.Info("[METASERVER: LBDump]    Going to print chart!");
 
+        int current_line = 0;
+        int top;
+        string s;
         // Print chart
-        for (int i = 0; i < LINES; i++) {
-            string s = "    ";
-            for (int j = 0; j < COLUMNS; j++) {
-                s += "*";
+        foreach (DataServerInfo dsi in allDSI) {
+            s = "   ";
+            top = ((int)dsi.MachineHeat / (int)maxheat) * (LINES - 1); //[0 , 19]
+            if (top == current_line) {
+                s += top_c;
             }
+            else if (current_line > top) {
+                s += empty_c;
+            }
+            else if (current_line < top) {
+                s += torso_c;
+            }
+
             System.Console.WriteLine(s);
+            current_line++;
         }
     }
 }
