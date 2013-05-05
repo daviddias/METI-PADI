@@ -793,8 +793,10 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         // 2. Calculate each Machine Heat and create an Array of DataServerInfo objects , sorted by ascending order
         calculateMachineHeat();
-               
-        var dataServerMapClone = dataServersMap.ToDictionary(entry => entry.Key, entry => entry.Value);
+
+        Dictionary<string, DataServerInfo> dataServerMapClone = cloneDataServerMap();
+        //Dictionary<string, DataServerInfo> dataServerMapClone = new Dictionary<string, DataServerInfo>(dataServersMap);
+        //var dataServerMapClone = dataServersMap.ToDictionary(entry => entry.Key, entry => entry.Value);
         List<DataServerInfo> sortedDataServerInfo = new List<DataServerInfo>(dataServerMapClone.Values);
 
         log.Info("[LOADBALANCING]    Machine Heat Before Load Balance:");
@@ -830,7 +832,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
                 break;
             
             log.Info("[LOADBALANCING]    Going to calculate machine heats!");
-            calculateMachineHeatClone(sortedDataServerInfo);
+            calculateMachineHeatClone(dataServerMapClone);
 
             foreach (DataServerInfo dsi in sortedDataServerInfo)
             {
@@ -914,9 +916,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     }
 
     // To be used in 2
-    public void calculateMachineHeatClone(List<DataServerInfo> sortedDataServerInfo)
+    public void calculateMachineHeatClone(Dictionary<string, DataServerInfo> dataServerMap)
     {
-            foreach (DataServerInfo dsi in sortedDataServerInfo)
+        foreach (DataServerInfo dsi in dataServerMap.Values)
         {
             double sum = 0;
 
@@ -1008,4 +1010,26 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         return ret;
     }
 
+    public Dictionary<string, DataServerInfo> cloneDataServerMap() { 
+        Dictionary<string, DataServerInfo> ret = new Dictionary<string,DataServerInfo>();
+        List<FileHandler> fhlist;
+        foreach (string key in dataServersMap.Keys) {
+            fhlist = new List<FileHandler>();
+            foreach (FileHandler fh in dataServersMap[key].fileHandlers) {
+                string[] localnames = new string[fh.dataServersFiles.Values.Count];
+                fh.dataServersFiles.Values.CopyTo(localnames,0);
+                FileHandler newFh = new FileHandler(fh.filenameGlobal, fh.fileSize, fh.nbServers, fh.dataServersPorts, localnames, fh.readQuorum, fh.writeQuorum, fh.nFileAccess);
+                List<string> byWhom = new List<string>(fh.byWhom);
+                newFh.isOpen = fh.isOpen;
+                newFh.byWhom = byWhom;
+                newFh.heat = fh.heat;
+                newFh.version = fh.version;
+                newFh.isLocked = fh.isLocked;
+                newFh.byWho = fh.byWho;
+                fhlist.Add(newFh);
+            }
+            ret.Add(key, new DataServerInfo(dataServersMap[key].MachineHeat, fhlist, dataServersMap[key].dataServer));  
+        }
+        return ret;
+    }
 }
