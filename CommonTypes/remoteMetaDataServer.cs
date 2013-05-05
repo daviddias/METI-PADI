@@ -1159,6 +1159,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         int LINES = 14;
 
+        calculateMachineHeat();
         List<DataServerInfo> allDSI = new List<DataServerInfo>(dataServersMap.Values);
 
         int average = (int) averageMachineHeat(allDSI);
@@ -1209,6 +1210,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         {
             s += "------";
         }
+        System.Console.WriteLine(s);
+
+        s = "       ";
         foreach (DataServerInfo dsi in allDSI) {
             s +=  dsi.dataServer + " ";
         }
