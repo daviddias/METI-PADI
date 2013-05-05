@@ -867,11 +867,46 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         List<FileHandler> updatedFileHandlers = new List<FileHandler>();
         foreach (FileHandler fhandler in migrationData.Keys)
         {
+
+            
             List<string> nextDataServers = migrationData[fhandler]; //nextDataServers Contem aqueles que são novos e aqueles que não foram alteradoss
 
+           
+            log.Info("############ " + fhandler.filenameGlobal);
+            log.Info("LAST");
+            foreach (string last in fhandler.dataServersPorts)
+            {
+                log.Info(last);
+            }
+            log.Info("NEXT");
+            foreach (string next in nextDataServers)
+            {
+                log.Info(next);
+            }
+
+
+
             List<string> oldDataServers = checkOld(fhandler, nextDataServers);
+            log.Info("OLD");
+            foreach (string old in oldDataServers)
+            {
+                log.Info(old);
+            }
             List<string> newDataServers = checkNew(fhandler, nextDataServers);
+            log.Info("NEW");
+            foreach (string nuevo in newDataServers)
+            {
+                log.Info(nuevo);
+            }
             List<string> sameDataServers = checkSame(fhandler, nextDataServers);
+            log.Info("SAME");
+            foreach (string same in sameDataServers)
+            {
+                log.Info(same);
+            }
+            log.Info("############################################################");
+           
+
 
             migrate(oldDataServers, newDataServers, sameDataServers, fhandler);
             updatedFileHandlers.Add(fhandler);
@@ -952,10 +987,46 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             return;     //Sossega a bicharola!
 
         while (index < hotest.fileHandlers.Count){
-            if (coldest.fileHandlers.Contains(hotest.fileHandlers[index]) || hotest.fileHandlers[index].isOpen){
+            foreach (FileHandler f in coldest.fileHandlers)
+            {
+                log.Info("COLDEST: " + f.filenameGlobal);
+            }
+            foreach (FileHandler f in hotest.fileHandlers)
+            {
+                log.Info("HOTEST: " + f.filenameGlobal);
+            }
+            
+            if(hotest.fileHandlers[index].isOpen){
                 index++;
                 continue;
             }
+
+            bool alreadyHasIt = false;
+            foreach (FileHandler fhcold in coldest.fileHandlers){
+                if (fhcold.filenameGlobal == hotest.fileHandlers[index].filenameGlobal)
+                {
+                    alreadyHasIt = true;
+                }
+            }
+            if (alreadyHasIt)
+            {
+                index++;
+                continue;
+            }
+
+            /*
+            if (coldest.fileHandlers.Contains(hotest.fileHandlers[index]) || hotest.fileHandlers[index].isOpen){
+                log.Info("ESTOU A DIZER QUE O COLDEST contem " + hotest.fileHandlers[index].filenameGlobal);
+                foreach (FileHandler f in coldest.fileHandlers)
+                {
+                    log.Info("ENQUANTO ELE CONTEM: " + f.filenameGlobal);
+                }
+                index++;
+                continue;
+            }
+            */
+            log.Info("I'm going to move from hotest: " + hotest.fileHandlers[index].filenameGlobal);
+
             coldest.fileHandlers.Add(hotest.fileHandlers[index]);
             hotest.fileHandlers.Remove(hotest.fileHandlers[index]);
             break;
@@ -1109,6 +1180,34 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //1.2 Actualizar no File Handler a referência do nome para o data server
         //2 Actualizar a lista de data servers (same+new)
 
+        log.Info("ACTUAL SERVER PORTS for file: " + fhandler.filenameGlobal);
+        foreach(string dp in fhandler.dataServersPorts){
+            log.Info(dp);
+        }
+        log.Info("--");
+
+        log.Info("OLD SERVER PORTS for file: " + fhandler.filenameGlobal);
+        foreach (string dp in oldDataServers)
+        {
+            log.Info(dp);
+        }
+        log.Info("--");
+
+        log.Info("NEW SERVER PORTS for file: " + fhandler.filenameGlobal);
+        foreach (string dp in newDataServers)
+        {
+            log.Info(dp);
+        }
+        log.Info("--");
+
+        log.Info("SAME SERVER PORTS for file: " + fhandler.filenameGlobal);
+        foreach (string dp in sameDataServers)
+        {
+            log.Info(dp);
+        }
+        log.Info("--");
+
+
         int dscount = newDataServers.Count;
        
         for (int i = 0; i < dscount; i++)
@@ -1126,6 +1225,14 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         result.AddRange(sameDataServers);
 
         fhandler.dataServersPorts = result.Distinct().ToArray();
+
+        log.Info("NEW SERVER PORTS for file: " + fhandler.filenameGlobal);
+        foreach (string dp in fhandler.dataServersPorts)
+        {
+            log.Info(dp);
+        }
+        log.Info("--");
+        
         return;
     }
 
