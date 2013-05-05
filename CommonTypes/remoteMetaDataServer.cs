@@ -1143,7 +1143,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         
         foreach(FileHandler fh in updatedFhandlerList){
             FileHandler FileHandlerToUpdate = fileTables[Utils.whichMetaServer(fh.filenameGlobal)][fh.filenameGlobal];
-            FileHandlerToUpdate.dataServersPorts = fh.dataServersPorts;   
+            FileHandlerToUpdate.dataServersPorts = fh.dataServersPorts;
+            FileHandlerToUpdate.dataServersFiles = fh.dataServersFiles;
         }
         sendUpdate(); // Update everyone =D
     }
