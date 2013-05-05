@@ -1146,6 +1146,31 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             FileHandlerToUpdate.dataServersPorts = fh.dataServersPorts;
             FileHandlerToUpdate.dataServersFiles = fh.dataServersFiles;
         }
+        
+        //Then reconstruct dataServerMap
+        Dictionary<string, DataServerInfo> updatedDataServersMap = new Dictionary<string, DataServerInfo>();
+        
+        foreach (Dictionary<string, FileHandler> ftable in fileTables)
+        {
+            foreach (FileHandler fhandler in ftable.Values)
+            {
+                foreach (string dsport in fhandler.dataServersPorts)
+                {
+                    if(updatedDataServersMap.ContainsKey(dsport))
+                    {
+                        updatedDataServersMap[dsport].fileHandlers.Add(fhandler);
+                    }
+                    else
+                    {
+                        DataServerInfo dsinfo = new DataServerInfo();
+                        dsinfo.dataServer = dsport;
+                        dsinfo.fileHandlers.Add(fhandler);
+                        updatedDataServersMap.Add(dsport,dsinfo);
+                    }
+                }
+            }
+        }
+        dataServersMap = updatedDataServersMap;
         sendUpdate(); // Update everyone =D
     }
 
