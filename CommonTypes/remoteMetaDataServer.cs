@@ -1146,6 +1146,31 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             FileHandlerToUpdate.dataServersPorts = fh.dataServersPorts;
             FileHandlerToUpdate.dataServersFiles = fh.dataServersFiles;
         }
+        
+        //Then reconstruct dataServerMap
+        Dictionary<string, DataServerInfo> updatedDataServersMap = new Dictionary<string, DataServerInfo>();
+        
+        foreach (Dictionary<string, FileHandler> ftable in fileTables)
+        {
+            foreach (FileHandler fhandler in ftable.Values)
+            {
+                foreach (string dsport in fhandler.dataServersPorts)
+                {
+                    if(updatedDataServersMap.ContainsKey(dsport))
+                    {
+                        updatedDataServersMap[dsport].fileHandlers.Add(fhandler);
+                    }
+                    else
+                    {
+                        DataServerInfo dsinfo = new DataServerInfo();
+                        dsinfo.dataServer = dsport;
+                        dsinfo.fileHandlers.Add(fhandler);
+                        updatedDataServersMap.Add(dsport,dsinfo);
+                    }
+                }
+            }
+        }
+        dataServersMap = updatedDataServersMap;
         sendUpdate(); // Update everyone =D
     }
 
@@ -1153,25 +1178,70 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     // LoadBalance Results
     public void loadBalanceDump() {
 
-        log.Info("[METASERVER: LBDump]    Entered Dump");
+        System.Console.WriteLine();
+        System.Console.WriteLine("_______________[LOAD_BALANCE_STATS]______________");
+        System.Console.WriteLine();
 
-        int LINES = 20;
-        int COLUMNS = 16;
+        int LINES = 14;
 
-        List<DataServerInfo> allDSI = new List<DataServerInfo>();
-        double average = averageMachineHeat(allDSI);
+        calculateMachineHeat();
+        List<DataServerInfo> allDSI = new List<DataServerInfo>(dataServersMap.Values);
+
+        int average = (int) averageMachineHeat(allDSI);
+        double maxheat = maxMachineHeat(allDSI);
+
+        string top_c =   "_____ ";
+        string torso_c = "|   | ";
+        string empty_c = "      ";
 
         char[][] chart = new char[LINES][];
 
-        log.Info("[METASERVER: LBDump]    Going to print chart!");
-
+        int top;
+        string s;
         // Print chart
-        for (int i = 0; i < LINES; i++) {
-            string s = "    ";
-            for (int j = 0; j < COLUMNS; j++) {
-                s += "*";
+        System.Console.WriteLine();
+        for (int current_line = 0; current_line < LINES; current_line++)
+        {
+            if ((LINES - average) == current_line)
+            {
+                s = "AVG---";
+            }
+            else
+            {
+                s = "      ";
+            }
+
+            foreach (DataServerInfo dsi in allDSI) {
+           
+                top = ((int)dsi.MachineHeat / (int)maxheat) * (LINES); //[0 , 19]
+                if ((LINES - top) == current_line)
+                {
+                    s += top_c;
+                }
+                else if (current_line < (LINES - top))
+                {
+                    s += empty_c;
+                }
+                else if (current_line > (LINES - top))
+                {
+                    s += torso_c;
+                }
             }
             System.Console.WriteLine(s);
+
         }
+        s = "       ";
+        foreach (DataServerInfo dsi in allDSI)
+        {
+            s += "------";
+        }
+        System.Console.WriteLine(s);
+
+        s = "       ";
+        foreach (DataServerInfo dsi in allDSI) {
+            s +=  dsi.dataServer + " ";
+        }
+        System.Console.WriteLine(s);
+        System.Console.WriteLine();
     }
 }
