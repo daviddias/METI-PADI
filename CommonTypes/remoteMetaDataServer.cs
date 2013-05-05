@@ -869,15 +869,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             List<string> newDataServers = checkNew(fhandler, nextDataServers);
             List<string> sameDataServers = checkSame(fhandler, nextDataServers);
 
-            int dscount = nextDataServers.Count;
-            for (int i = 0; i < dscount; i++)
-            {
-                if(migrate(oldDataServers[i], newDataServers[i], fhandler) != true){
-                    newDataServers[i] = oldDataServers[i];
-                }
-
-            }
-            updateFileHandler(fhandler, newDataServers, sameDataServers);
+            migrate(oldDataServers, newDataServers, sameDataServers, fhandler);
             updatedFileHandlers.Add(fhandler);
         }
       
@@ -1055,35 +1047,85 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     // To be used in 6.
     public List<string> checkOld(FileHandler fhandler, List<string> nextDataServers)
     {
-        return null;
+        List<string> oldList = new List<string>();
+        foreach (string ds in fhandler.dataServersPorts)
+        {
+            if (nextDataServers.Contains(ds))
+            {
+                continue;
+            }
+            else
+            {
+                oldList.Add(ds);
+            }
+        }
+        return oldList;
     }
 
     // To be used in 6.
     public List<string> checkNew(FileHandler fhandler, List<string> nextDataServers)
     {
-        return null;
+        List<string> newList = new List<string>();
+        foreach (string ds in nextDataServers)
+        {
+            if (fhandler.dataServersPorts.Contains(ds))
+            {
+                continue;
+            }
+            else
+            {
+                newList.Add(ds);
+            }
+        }
+        return newList;
     }
 
     // To be used in 6.
     public List<string> checkSame(FileHandler fhandler, List<string> nextDataServers)
     {
-        return null;
+        List<string> sameList = new List<string>();
+        foreach (string ds in fhandler.dataServersPorts)
+        {
+            if (nextDataServers.Contains(ds))
+            {
+                sameList.Add(ds);
+            }
+            else
+            {
+                continue;   
+            }
+        }
+        return sameList;
     }
 
     // To be used in 6.
-    public bool migrate(string oldDataServer, string newDataServer, FileHandler fhandler)
+    public bool migrate(List<string> oldDataServers, List<string> newDataServers,List<string> sameDataServers,  FileHandler fhandler)
     {
+        //1. Ciclo para fazer todas as transfers
+        //1.1 Fazer o migrate, se resultar bem cool, se não actualizar a lista nova e colocar o antigo
+        //1.2 Actualizar no File Handler a referência do nome para o data server
+        //2 Actualizar a lista de data servers (same+new)
+
+
+        int dscount = newDataServers.Count;
+       
+         for (int i = 0; i < dscount; i++)
+        {
+            if (migrate(oldDataServers[i], newDataServers[i], fhandler) != true)
+            {
+                newDataServers[i] = oldDataServers[i];
+            }
+
+        }
+
+
         return false;
-    }
-
-    // To be used in 6.
-    public void updateFileHandler(FileHandler fhandler, List<string> newDataServers, List<string> sameDataServers)
-    {
     }
 
     // To be used in 7.
     public void updateDataServerMap(List<FileHandler> updatedFhandlerList)
     {
+        //ACTUALIZAR FILE HANDLERS e ASSOCIAÇÕES DATASERVER - LOCAL NAME!
     }
 
 }
