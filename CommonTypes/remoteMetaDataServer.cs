@@ -1152,13 +1152,15 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     // LoadBalance Results
     public void loadBalanceDump() {
 
-        log.Info("[METASERVER: LBDump]    Entered Dump");
+        System.Console.WriteLine();
+        System.Console.WriteLine("_______________[LOAD_BALANCE_STATS]______________");
+        System.Console.WriteLine();
 
-        int LINES = 20;
-        int COLUMNS = 50;
+        int LINES = 14;
 
-        List<DataServerInfo> allDSI = new List<DataServerInfo>();
-        double average = averageMachineHeat(allDSI);
+        List<DataServerInfo> allDSI = new List<DataServerInfo>(dataServersMap.Values);
+
+        int average = (int) averageMachineHeat(allDSI);
         double maxheat = maxMachineHeat(allDSI);
 
         string top_c =   "_____ ";
@@ -1167,27 +1169,49 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         char[][] chart = new char[LINES][];
 
-        log.Info("[METASERVER: LBDump]    Going to print chart!");
-
-        int current_line = 0;
         int top;
         string s;
         // Print chart
-        foreach (DataServerInfo dsi in allDSI) {
-            s = "   ";
-            top = ((int)dsi.MachineHeat / (int)maxheat) * (LINES - 1); //[0 , 19]
-            if (top == current_line) {
-                s += top_c;
+        System.Console.WriteLine();
+        for (int current_line = 0; current_line < LINES; current_line++)
+        {
+            if ((LINES - average) == current_line)
+            {
+                s = "AVG---";
             }
-            else if (current_line > top) {
-                s += empty_c;
-            }
-            else if (current_line < top) {
-                s += torso_c;
+            else
+            {
+                s = "      ";
             }
 
+            foreach (DataServerInfo dsi in allDSI) {
+           
+                top = ((int)dsi.MachineHeat / (int)maxheat) * (LINES); //[0 , 19]
+                if ((LINES - top) == current_line)
+                {
+                    s += top_c;
+                }
+                else if (current_line < (LINES - top))
+                {
+                    s += empty_c;
+                }
+                else if (current_line > (LINES - top))
+                {
+                    s += torso_c;
+                }
+            }
             System.Console.WriteLine(s);
-            current_line++;
+
         }
+        s = "       ";
+        foreach (DataServerInfo dsi in allDSI)
+        {
+            s += "------";
+        }
+        foreach (DataServerInfo dsi in allDSI) {
+            s +=  dsi.dataServer + " ";
+        }
+        System.Console.WriteLine(s);
+        System.Console.WriteLine();
     }
 }
