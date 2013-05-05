@@ -144,6 +144,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     /* delegates */
     public delegate void prepareUpdateRemoteAsyncDelegate(Dictionary<string, FileHandler>[] newFileTable, Dictionary<string, DataServerInfo>[] newDataServersMap);
     public delegate void askUpdateRemoteAsyncDelegate();
+    public delegate TransactionDTO TransferRemoteAsyncDelegate(TransactionDTO dto, string address);
 
 
 
@@ -1100,7 +1101,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     }
 
     // To be used in 6.
-    public bool migrate(List<string> oldDataServers, List<string> newDataServers,List<string> sameDataServers,  FileHandler fhandler)
+    public void migrate(List<string> oldDataServers, List<string> newDataServers,List<string> sameDataServers,  FileHandler fhandler)
     {
         //1. Ciclo para fazer todas as transfers
         //1.1 Fazer o migrate, se resultar bem cool, se não actualizar a lista nova e colocar o antigo
@@ -1112,15 +1113,30 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
        
          for (int i = 0; i < dscount; i++)
         {
-            if (migrate(oldDataServers[i], newDataServers[i], fhandler) != true)
+            if (transfer(oldDataServers[i], newDataServers[i], fhandler) != true)
             {
                 newDataServers[i] = oldDataServers[i];
             }
-
+            else {
+                fhandler.dataServersFiles.Add(newDataServers[i], fhandler.dataServersFiles[oldDataServers[i]]); 
+                fhandler.dataServersFiles.Remove(oldDataServers[i]);
+            }
         }
 
+        List<string> result = new List<string>(newDataServers);
+        result.AddRange(sameDataServers);
 
-        return false;
+        fhandler.dataServersPorts = result.Distinct().ToArray();
+
+        return;
+    }
+
+    public Boolean transfer(string oldDS, string newDS, FileHandler fh) {
+
+        TransactionDTO dto = new TransactionDTO(Utils.generateTransactionID(), "metaserver", fh.dataServersFiles[oldDS]);
+
+        MyRemoteDataInterface rdi = Utils.getRemoteDataServerObj(oldDS);
+        return rdi.transferFile(dto, "tcp://localhost:" + newDS + "/sdasdssd").success;
     }
 
     // To be used in 7.
