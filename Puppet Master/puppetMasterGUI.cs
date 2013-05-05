@@ -171,6 +171,7 @@ namespace Puppet_Master
                 case "EXESCRIPT": exeScript(parsed[1], parsed[2]); break;
                 case "LOADBALANCE": loadbalance(parsed[1]); break;
                 case "HELLO": hello(parsed[1]); break;
+                case "LBDUMP": loadBalanceDump(parsed[1]); break;
             }
         }
 
@@ -713,6 +714,18 @@ namespace Puppet_Master
             }
         }
 
+        private void loadBalanceDump(string process) {
+            if (process.StartsWith("m-"))
+            {
+                MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(listOfMetaServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
+                RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.loadBalanceDump);
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
+            }
+            else
+            {
+                outputBox.Text = "Invalid process";
+            }
+        }
         
     }
 }
