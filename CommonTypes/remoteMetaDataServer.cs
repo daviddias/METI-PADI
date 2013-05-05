@@ -879,7 +879,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         updateDataServerMap(updatedFileHandlers);
         calculateMachineHeat();
 
-
     }
 
 
@@ -1108,10 +1107,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //1.2 Actualizar no File Handler a referência do nome para o data server
         //2 Actualizar a lista de data servers (same+new)
 
-
         int dscount = newDataServers.Count;
        
-         for (int i = 0; i < dscount; i++)
+        for (int i = 0; i < dscount; i++)
         {
             if (transfer(oldDataServers[i], newDataServers[i], fhandler) != true)
             {
@@ -1122,12 +1120,10 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
                 fhandler.dataServersFiles.Remove(oldDataServers[i]);
             }
         }
-
         List<string> result = new List<string>(newDataServers);
         result.AddRange(sameDataServers);
 
         fhandler.dataServersPorts = result.Distinct().ToArray();
-
         return;
     }
 
@@ -1139,11 +1135,19 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         return rdi.transferFile(dto, "tcp://localhost:" + newDS + "/sdasdssd").success;
     }
 
+
     // To be used in 7.
     public void updateDataServerMap(List<FileHandler> updatedFhandlerList)
     {
-        //ACTUALIZAR FILE HANDLERS e ASSOCIAÇÕES DATASERVER - LOCAL NAME!
+        //Actually we are going to use FileTables for this update =)
+        
+        foreach(FileHandler fh in updatedFhandlerList){
+            FileHandler FileHandlerToUpdate = fileTables[Utils.whichMetaServer(fh.filenameGlobal)][fh.filenameGlobal];
+            FileHandlerToUpdate.dataServersPorts = fh.dataServersPorts;   
+        }
+        sendUpdate(); // Update everyone =D
     }
+
 
     // LoadBalance Results
     public void loadBalanceDump() {
