@@ -487,11 +487,11 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
      *-----------------------------------------------------------------------*/
 
 
-    public TransactionDTO transferFile(TransactionDTO dto, string address) {
+    public TransactionDTO transferFile(TransactionDTO dto, string nextDataServerAddress) {
         
         TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameForDataServer);
 
-        // this method is limited to 2^32 byte files (4.2 GB)
+        // this method is limited to 2^32 byte files (4.2 GB) and therefore it's not thanks to limited vm heap size :)
         byte[] bytesRead = null;
 
         if (isfailed == true)
@@ -525,7 +525,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             return newDTO;
         }
 
-        string port = Utils.getPortOfAddress(address);
+        string port = Utils.getPortOfAddress(nextDataServerAddress);
 
         FileStream fs;
 

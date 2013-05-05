@@ -848,7 +848,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             System.Console.WriteLine("Data Server: " + dsi.dataServer + "   Heat: " + dsi.MachineHeat);
         }
 
-        // 5. Create struture <fileHandler, arrayOfnewDataServers>>
+        // 5. Create struture <fileHandler, arrayOfnextDataServers>>
         log.Info("[LOADBALANCING]    Going to create migrationDataStructure!");
         Dictionary<FileHandler, List<string>> migrationData = createMigrationDataStructure(sortedDataServerInfo);
 
@@ -860,12 +860,30 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         }
         
         // 6. Do the migrations
-        
+        List<FileHandler> updatedFileHandlers = new List<FileHandler>();
+        foreach (FileHandler fhandler in migrationData.Keys)
+        {
+            List<string> nextDataServers = migrationData[fhandler]; //nextDataServers Contem aqueles que são novos e aqueles que não foram alteradoss
 
+            List<string> oldDataServers = checkOld(fhandler, nextDataServers);
+            List<string> newDataServers = checkNew(fhandler, nextDataServers);
+            List<string> sameDataServers = checkSame(fhandler, nextDataServers);
 
-        
+            int dscount = nextDataServers.Count;
+            for (int i = 0; i < dscount; i++)
+            {
+                if(migrate(oldDataServers[i], newDataServers[i], fhandler) != true){
+                    newDataServers[i] = oldDataServers[i];
+                }
+
+            }
+            updateFileHandler(fhandler, newDataServers, sameDataServers);
+            updatedFileHandlers.Add(fhandler);
+        }
+      
         // 7. Update dataServerMap again
-    
+        updateDataServerMap(updatedFileHandlers);
+        calculateMachineHeat();
 
 
     }
@@ -989,6 +1007,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         return min;
     }
 
+    // To be used in 5.
     public Dictionary<FileHandler, List<string>> createMigrationDataStructure(List<DataServerInfo> dsi_list) {
         
         Dictionary<FileHandler, List<string>> ret = new Dictionary<FileHandler, List<string>>();
@@ -1032,4 +1051,39 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         }
         return ret;
     }
+
+    // To be used in 6.
+    public List<string> checkOld(FileHandler fhandler, List<string> nextDataServers)
+    {
+        return null;
+    }
+
+    // To be used in 6.
+    public List<string> checkNew(FileHandler fhandler, List<string> nextDataServers)
+    {
+        return null;
+    }
+
+    // To be used in 6.
+    public List<string> checkSame(FileHandler fhandler, List<string> nextDataServers)
+    {
+        return null;
+    }
+
+    // To be used in 6.
+    public bool migrate(string oldDataServer, string newDataServer, FileHandler fhandler)
+    {
+        return false;
+    }
+
+    // To be used in 6.
+    public void updateFileHandler(FileHandler fhandler, List<string> newDataServers, List<string> sameDataServers)
+    {
+    }
+
+    // To be used in 7.
+    public void updateDataServerMap(List<FileHandler> updatedFhandlerList)
+    {
+    }
+
 }
