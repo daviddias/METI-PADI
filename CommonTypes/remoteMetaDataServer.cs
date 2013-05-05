@@ -286,7 +286,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         for (int i = 0; i < nbServers; i++)
             localNames[i] = Utils.genLocalName("m-" + whoAmI);
 
-
+        if (localNames[0] == localNames[1]) {
+            System.Console.WriteLine("BUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG!!!!!!!!!!!");
+        }
 
         //4. Create File-Handler 
         //Console.WriteLine("Creating new File Handle");
@@ -1187,8 +1189,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         calculateMachineHeat();
         List<DataServerInfo> allDSI = new List<DataServerInfo>(dataServersMap.Values);
 
-        int average = (int) averageMachineHeat(allDSI);
         double maxheat = maxMachineHeat(allDSI);
+        int average = ((int)averageMachineHeat(allDSI) / (int)maxheat) * (LINES);
+
 
         string top_c =   "_____ ";
         string torso_c = "|   | ";
@@ -1204,7 +1207,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         {
             if ((LINES - average) == current_line)
             {
-                s = "AVG---";
+                s = "AVG___";
             }
             else
             {
