@@ -312,6 +312,10 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         for (int i = 0; i < nbServers; i++)
             localNames[i] = Utils.genLocalName("m-" + whoAmI);
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> 83fd2724b0895b86fe9b94c445c8e78d59094683
         //4. Create File-Handler 
         //Console.WriteLine("Creating new File Handle");
         fh = new FileHandler(filename, 0, nbServers, selectedDataServers, localNames, readQuorum, writeQuorum, 1);
@@ -1409,7 +1413,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
                 heat = dsi.MachineHeat.ToString("00");
                 s += " " + heat + "  ";
             }
-
             System.Console.WriteLine(s);
             System.Console.WriteLine();
 
