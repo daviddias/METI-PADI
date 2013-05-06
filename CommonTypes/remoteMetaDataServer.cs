@@ -316,7 +316,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         for (int i = 0; i < nbServers; i++)
             localNames[i] = Utils.genLocalName("m-" + whoAmI);
 
-
+        if (localNames[0] == localNames[1]) {
+            System.Console.WriteLine("BUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG!!!!!!!!!!!");
+        }
 
         //4. Create File-Handler 
         //Console.WriteLine("Creating new File Handle");
@@ -895,11 +897,46 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         List<FileHandler> updatedFileHandlers = new List<FileHandler>();
         foreach (FileHandler fhandler in migrationData.Keys)
         {
+
+            
             List<string> nextDataServers = migrationData[fhandler]; //nextDataServers Contem aqueles que são novos e aqueles que não foram alteradoss
 
+           
+            log.Info("############ " + fhandler.filenameGlobal);
+            log.Info("LAST");
+            foreach (string last in fhandler.dataServersPorts)
+            {
+                log.Info(last);
+            }
+            log.Info("NEXT");
+            foreach (string next in nextDataServers)
+            {
+                log.Info(next);
+            }
+
+
+
             List<string> oldDataServers = checkOld(fhandler, nextDataServers);
+            log.Info("OLD");
+            foreach (string old in oldDataServers)
+            {
+                log.Info(old);
+            }
             List<string> newDataServers = checkNew(fhandler, nextDataServers);
+            log.Info("NEW");
+            foreach (string nuevo in newDataServers)
+            {
+                log.Info(nuevo);
+            }
             List<string> sameDataServers = checkSame(fhandler, nextDataServers);
+            log.Info("SAME");
+            foreach (string same in sameDataServers)
+            {
+                log.Info(same);
+            }
+            log.Info("############################################################");
+           
+
 
             migrate(oldDataServers, newDataServers, sameDataServers, fhandler);
             updatedFileHandlers.Add(fhandler);
@@ -980,10 +1017,46 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             return;     //Sossega a bicharola!
 
         while (index < hotest.fileHandlers.Count){
-            if (coldest.fileHandlers.Contains(hotest.fileHandlers[index]) || hotest.fileHandlers[index].isOpen){
+            foreach (FileHandler f in coldest.fileHandlers)
+            {
+                log.Info("COLDEST: " + f.filenameGlobal);
+            }
+            foreach (FileHandler f in hotest.fileHandlers)
+            {
+                log.Info("HOTEST: " + f.filenameGlobal);
+            }
+            
+            if(hotest.fileHandlers[index].isOpen){
                 index++;
                 continue;
             }
+
+            bool alreadyHasIt = false;
+            foreach (FileHandler fhcold in coldest.fileHandlers){
+                if (fhcold.filenameGlobal == hotest.fileHandlers[index].filenameGlobal)
+                {
+                    alreadyHasIt = true;
+                }
+            }
+            if (alreadyHasIt)
+            {
+                index++;
+                continue;
+            }
+
+            /*
+            if (coldest.fileHandlers.Contains(hotest.fileHandlers[index]) || hotest.fileHandlers[index].isOpen){
+                log.Info("ESTOU A DIZER QUE O COLDEST contem " + hotest.fileHandlers[index].filenameGlobal);
+                foreach (FileHandler f in coldest.fileHandlers)
+                {
+                    log.Info("ENQUANTO ELE CONTEM: " + f.filenameGlobal);
+                }
+                index++;
+                continue;
+            }
+            */
+            log.Info("I'm going to move from hotest: " + hotest.fileHandlers[index].filenameGlobal);
+
             coldest.fileHandlers.Add(hotest.fileHandlers[index]);
             hotest.fileHandlers.Remove(hotest.fileHandlers[index]);
             break;
@@ -1034,18 +1107,36 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public Dictionary<FileHandler, List<string>> createMigrationDataStructure(List<DataServerInfo> dsi_list) {
         
         Dictionary<FileHandler, List<string>> ret = new Dictionary<FileHandler, List<string>>();
+        Dictionary<string, List<string>> temp = new Dictionary<string, List<string>>();
         List<string> dataservers;
-        
+        List<FileHandler> allFilehandlers = new List<FileHandler>();
+
         foreach (DataServerInfo dsi in dsi_list) {
             foreach (FileHandler fh in dsi.fileHandlers) {
-                if (ret.Keys.Contains(fh))
+                if (temp.Keys.Contains(fh.filenameGlobal))
                 {
-                    ret[fh].Add(dsi.dataServer);
+                    temp[fh.filenameGlobal].Add(dsi.dataServer);
                 }
                 else {
                     dataservers = new List<string>();
                     dataservers.Add(dsi.dataServer);
-                    ret.Add(fh, dataservers);
+                    temp.Add(fh.filenameGlobal, dataservers);
+                }
+            }
+        }
+        foreach (string filename in temp.Keys) {
+            foreach (DataServerInfo dsi in dsi_list) {
+                foreach (FileHandler fh in dsi.fileHandlers) {
+                    allFilehandlers.Add(fh);
+                }
+            }
+        }
+
+        foreach (string fname in temp.Keys) {
+            foreach (FileHandler fh in allFilehandlers) {
+                if (fname == fh.filenameGlobal) {
+                    ret.Add(fh, temp[fname]);
+                    break;
                 }
             }
         }
@@ -1137,6 +1228,34 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //1.2 Actualizar no File Handler a referência do nome para o data server
         //2 Actualizar a lista de data servers (same+new)
 
+        log.Info("ACTUAL SERVER PORTS for file: " + fhandler.filenameGlobal);
+        foreach(string dp in fhandler.dataServersPorts){
+            log.Info(dp);
+        }
+        log.Info("--");
+
+        log.Info("OLD SERVER PORTS for file: " + fhandler.filenameGlobal);
+        foreach (string dp in oldDataServers)
+        {
+            log.Info(dp);
+        }
+        log.Info("--");
+
+        log.Info("NEW SERVER PORTS for file: " + fhandler.filenameGlobal);
+        foreach (string dp in newDataServers)
+        {
+            log.Info(dp);
+        }
+        log.Info("--");
+
+        log.Info("SAME SERVER PORTS for file: " + fhandler.filenameGlobal);
+        foreach (string dp in sameDataServers)
+        {
+            log.Info(dp);
+        }
+        log.Info("--");
+
+
         int dscount = newDataServers.Count;
        
         for (int i = 0; i < dscount; i++)
@@ -1154,6 +1273,14 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         result.AddRange(sameDataServers);
 
         fhandler.dataServersPorts = result.Distinct().ToArray();
+
+        log.Info("NEW SERVER PORTS for file: " + fhandler.filenameGlobal);
+        foreach (string dp in fhandler.dataServersPorts)
+        {
+            log.Info(dp);
+        }
+        log.Info("--");
+        
         return;
     }
 
@@ -1217,8 +1344,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         calculateMachineHeat();
         List<DataServerInfo> allDSI = new List<DataServerInfo>(dataServersMap.Values);
 
-        int average = (int) averageMachineHeat(allDSI);
         double maxheat = maxMachineHeat(allDSI);
+        int average = ((int)averageMachineHeat(allDSI) / (int)maxheat) * (LINES);
+
 
         string top_c =   "_____ ";
         string torso_c = "|   | ";
@@ -1234,7 +1362,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         {
             if ((LINES - average) == current_line)
             {
-                s = "AVG---";
+                s = "AVG___";
             }
             else
             {
