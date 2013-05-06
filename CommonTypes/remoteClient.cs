@@ -387,7 +387,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         while (true)
         {
-            System.Threading.Thread.Sleep(1); // Wait 1ms to avoid that the second server receive a commit before a prepare
+            System.Threading.Thread.Sleep(10); // Wait 10ms to avoid that the second server receive a commit before a prepare
 
             lock (deleteQUORUM)
             {
@@ -419,7 +419,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         while (true)
         {
-            System.Threading.Thread.Sleep(1); // Wair 1ms to avoid that the second server receive a commit before a prepare
+            System.Threading.Thread.Sleep(10); // Wair 1ms to avoid that the second server receive a commit before a prepare
 
             lock (deleteQUORUM)
             {
@@ -540,7 +540,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         while (true)
         {
-            System.Threading.Thread.Sleep(1000); // Wait 1s to avoid that the second server receive a commit before a prepare
+            System.Threading.Thread.Sleep(10); // Wait 10s to avoid that the second server receive a commit before a prepare
 
             lock (writeQUORUM)
             {
@@ -571,7 +571,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         while (true)
         {
-            System.Threading.Thread.Sleep(1000); // Wait 1s to avoid that the second server receive a commit before a prepare
+            System.Threading.Thread.Sleep(10); // Wait 1s to avoid that the second server receive a commit before a prepare
             lock (writeQUORUM)
             {
                 if (writeQUORUM.ContainsKey(transactionID)) //the fh.writeQuorum is the same as createQuorum
@@ -689,7 +689,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         byte[] content = null; //File Content
         while (true)
         {
-            System.Threading.Thread.Sleep(1); // Wait 1ms to avoid that the second server receive a commit before a prepare
+            System.Threading.Thread.Sleep(10); // Wait 10ms to avoid that the second server receive a commit before a prepare
 
             lock (readQUORUM)
             {

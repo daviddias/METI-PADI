@@ -91,7 +91,7 @@ namespace Puppet_Master
                 try { if (lines[0] == "") { return; } }
                 catch (IndexOutOfRangeException) { return; }
                 executeNextStep();
-                System.Threading.Thread.Sleep(1000);
+                System.Threading.Thread.Sleep(500);
             }
         }
 
@@ -204,7 +204,7 @@ namespace Puppet_Master
                 runningProcesses["d-" + i].StartInfo.FileName = dataServerPath;
                 runningProcesses["d-" + i].Start();
                 Console.WriteLine("Data-Server Started");
-                System.Threading.Thread.Sleep(1000);
+                System.Threading.Thread.Sleep(500);
             }
 
            
@@ -217,7 +217,7 @@ namespace Puppet_Master
             runningProcesses["m-" + 0].StartInfo.FileName = metaServerPath;
             runningProcesses["m-" + 0].Start();
             Console.WriteLine("Meta-Server 0 Started");
-            System.Threading.Thread.Sleep(1000);
+            System.Threading.Thread.Sleep(500);
 
 
             String meta1 = (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 2).ToString();
@@ -227,7 +227,7 @@ namespace Puppet_Master
             runningProcesses["m-" + 1].Start();
 
             Console.WriteLine("Meta-Server 1 Started");
-            System.Threading.Thread.Sleep(1000);
+            System.Threading.Thread.Sleep(500);
 
             String meta2 = (firstMetaServerPort + 2).ToString() + " " + (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString();
             runningProcesses.Add("m-" + 2, new Process());
@@ -236,7 +236,7 @@ namespace Puppet_Master
             runningProcesses["m-" + 2].Start();
 
             Console.WriteLine("Meta-Server 2 Started");
-            System.Threading.Thread.Sleep(1000);
+            System.Threading.Thread.Sleep(500);
 
 
             listOfMetaServerPorts = meta0; //Meta0 Contem a ordem certa de Meta-Servers que corresponde as responsabilidades para serem entregues aos clientes
@@ -334,7 +334,7 @@ namespace Puppet_Master
                 runningProcesses["d-" + processNum].StartInfo.FileName = dataServerPath;
                 runningProcesses["d-" + processNum].Start();
                 Console.WriteLine("Data-Server Started");
-                System.Threading.Thread.Sleep(1000);
+                System.Threading.Thread.Sleep(500);
 
                 String[] dataPorts = this.listOfDataServerPorts;
 
@@ -691,7 +691,7 @@ namespace Puppet_Master
         private void hello(string process)
         {
             outputBox.Text = process;
-            System.Threading.Thread.Sleep(2000);
+            System.Threading.Thread.Sleep(500);
             if(process[0] == 'c')
             {
                 remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
