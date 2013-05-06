@@ -15,6 +15,7 @@ using log4net;
 using System.Collections;
 using System.Runtime.Serialization.Formatters;
 using System.Timers;
+using System.Net.NetworkInformation;
 
 
 
@@ -70,7 +71,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     static int whoAmI; //0, 1 ou 2 to identify which Meta-Server it is 
     static List<string> dataServersPorts = new List<string>();
     static Boolean recovering = false;
-    static System.Timers.Timer timeLoad = new System.Timers.Timer(60000); // timer que vai lançar o Loadbalancing de X em X milisegundos
+    static System.Timers.Timer timeLoad = new System.Timers.Timer(10000); // timer que vai lançar o Loadbalancing de X em X milisegundos
 
     
 
@@ -149,23 +150,50 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     /* Event handler para o timer do loadbalancing */
     private void onTime(object source, ElapsedEventArgs e)
     {
-        //MyRemoteMetaDataInterface[] mdi = new MyRemoteMetaDataInterface[2];
-        //mdi[0] = Utils.getRemoteMetaDataObj(aMetaServerPort);
-        //mdi[1] = Utils.getRemoteMetaDataObj(bMetaServerPort);
-        //if(whoAmI == 0)
-        //    loadBalancing();
-        //else if (whoAmI == 1)
-        //{
-        //    if(mdi[0].)
-        //    loadBalancing();
-        //}
-        //else
-        //{
-        //    loadBalancing();
-        //}
+        if (isfailed)
+        {
+            log.Info("[METASERVER: confirmCreate]    The server has is on 'fail'!");
+            return;
+        }
 
+        MyRemoteMetaDataInterface[] mdi = new MyRemoteMetaDataInterface[2];
+        mdi[0] = Utils.getRemoteMetaDataObj(aMetaServerPort);
+        mdi[1] = Utils.getRemoteMetaDataObj(bMetaServerPort);
+        
+        // loadbalancing is made for the first (lower number) metaserver alive
+        
+        if(whoAmI == 0)
+            Console.Write("\n\ntimer\n\n"); //loadBalancing();
+        else if (whoAmI == 1)
+        {
+            try
+            {
+                mdi[0].alive();
+            }
+            catch
+            {
+                Console.Write("\n\ntimer\n\n"); //loadBalancing();
+            }
+        }
+        else
+        {
+            try
+            {
+                mdi[0].alive();
+            }
+            catch
+            {
+                try
+                {
+                    mdi[1].alive();
+                }
+                catch
+                {
+                    Console.Write("\n\ntimer\n\n"); //loadBalancing();
+                }
+            }
+        }
 
-        Console.Write("\n\ntimer\n\n");
     }
 
     /* Para a thread nunca se desligar */
@@ -315,10 +343,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         string[] localNames = new string[nbServers];
         for (int i = 0; i < nbServers; i++)
             localNames[i] = Utils.genLocalName("m-" + whoAmI);
-
-        if (localNames[0] == localNames[1]) {
-            System.Console.WriteLine("BUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG!!!!!!!!!!!");
-        }
 
         //4. Create File-Handler 
         //Console.WriteLine("Creating new File Handle");
@@ -495,25 +519,12 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
      ************************************************************************/
     public void fail()
     {
-        //1. Is MetaServer Able to Respond (Fail)
-        if (isfailed)
-        {
-            log.Info("[METASERVER: confirmCreate]    The server has is on 'fail'!");
-            return;
-        }
 
-        IChannel[] defaultTCPChannel = ChannelServices.RegisteredChannels;
-        for (int channelCount = 0; channelCount < defaultTCPChannel.Length; channelCount++)
-        {
-            //Locate My registerd channel
-            if (defaultTCPChannel[channelCount].ChannelName == localPort)
-            {
-                //Release(Unregister) the Channel assigned to this Instance
-                ChannelServices.UnregisterChannel(defaultTCPChannel[channelCount]);
-                break;
-            }
-        }
+        IChannel channel = ChannelServices.GetChannel(localPort);
+        ChannelServices.UnregisterChannel(channel);
 
+
+        isfailed = true;
         log.Info("[METASERVER: fail]    Success!");
         return;
     }
