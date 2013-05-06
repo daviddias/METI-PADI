@@ -642,7 +642,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         Monitor.PulseAll(mutationList);
         Monitor.Exit(mutationList);
 
-        System.Threading.Thread.Sleep(500);
+        System.Threading.Thread.Sleep(50);
 
 
         // drop LOCKS if is off for time more than timeout

@@ -17,9 +17,6 @@ using System.Runtime.Serialization.Formatters;
 using System.Timers;
 
 
-
-
-
 public interface MyRemoteMetaDataInterface{
 
     string MetodoOla();
@@ -301,24 +298,19 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         
         //3.2 Select the first enougths DataServers to store the data - DUMB WAY
         string[] selectedDataServers = new string[nbServers];
-        List<DataServerInfo> listOfDataServersAvailable = dataServersMap.Values.ToList();   
+        List<DataServerInfo> listOfDataServersAvailable = dataServersMap.Values.ToList();
+        listOfDataServersAvailable.Sort((s1, s2) => s1.MachineHeat.CompareTo(s2.MachineHeat));
         for (int i = 0; i < nbServers; i++)
         {
             //selectedDataServers[i] = dataServersPorts[i];
-            // %% TODO - Use info from Load Balacing(dataServerMap) to decide which will go
             selectedDataServers[i] = listOfDataServersAvailable[i].dataServer;
         }
-
 
         
         // 3.3 Generate localfilenames
         string[] localNames = new string[nbServers];
         for (int i = 0; i < nbServers; i++)
             localNames[i] = Utils.genLocalName("m-" + whoAmI);
-
-        if (localNames[0] == localNames[1]) {
-            System.Console.WriteLine("BUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG!!!!!!!!!!!");
-        }
 
         //4. Create File-Handler 
         //Console.WriteLine("Creating new File Handle");
@@ -787,13 +779,15 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         recovering = true;
 
+ 
         for (int i = 0; i < 2; i++)
         {
             askUpdateRemoteAsyncDelegate RemoteUpdate = new askUpdateRemoteAsyncDelegate(mdi[i].sendUpdate);
             IAsyncResult RemAr = RemoteUpdate.BeginInvoke(null, null);
 
-            log.Info(" REQUEST UPDATE SENDED::  Contacted other metaservers to ask for theis updates!");
+            log.Info(" REQUEST UPDATE SENDED::  Contacted other metaservers to ask for updates!");
         }
+      
 
 
     }
