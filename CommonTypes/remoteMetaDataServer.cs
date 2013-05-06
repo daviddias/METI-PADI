@@ -1077,18 +1077,36 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public Dictionary<FileHandler, List<string>> createMigrationDataStructure(List<DataServerInfo> dsi_list) {
         
         Dictionary<FileHandler, List<string>> ret = new Dictionary<FileHandler, List<string>>();
+        Dictionary<string, List<string>> temp = new Dictionary<string, List<string>>();
         List<string> dataservers;
-        
+        List<FileHandler> allFilehandlers = new List<FileHandler>();
+
         foreach (DataServerInfo dsi in dsi_list) {
             foreach (FileHandler fh in dsi.fileHandlers) {
-                if (ret.Keys.Contains(fh))
+                if (temp.Keys.Contains(fh.filenameGlobal))
                 {
-                    ret[fh].Add(dsi.dataServer);
+                    temp[fh.filenameGlobal].Add(dsi.dataServer);
                 }
                 else {
                     dataservers = new List<string>();
                     dataservers.Add(dsi.dataServer);
-                    ret.Add(fh, dataservers);
+                    temp.Add(fh.filenameGlobal, dataservers);
+                }
+            }
+        }
+        foreach (string filename in temp.Keys) {
+            foreach (DataServerInfo dsi in dsi_list) {
+                foreach (FileHandler fh in dsi.fileHandlers) {
+                    allFilehandlers.Add(fh);
+                }
+            }
+        }
+
+        foreach (string fname in temp.Keys) {
+            foreach (FileHandler fh in allFilehandlers) {
+                if (fname == fh.filenameGlobal) {
+                    ret.Add(fh, temp[fname]);
+                    break;
                 }
             }
         }
