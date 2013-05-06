@@ -548,7 +548,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         File.GetAccessControl(dto.filenameForDataServer);
         File.Delete(dto.filenameForDataServer);
 
-        log.Info("TRANSFER :: transferFile : File deleted successfuly! Operation Successful");
+        log.Info("TRANSFER :: transferFile :    File deleted successfuly! Operation Successful");
 
         return newDTO;
     }

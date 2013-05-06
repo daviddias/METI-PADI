@@ -91,7 +91,7 @@ namespace Puppet_Master
                 try { if (lines[0] == "") { return; } }
                 catch (IndexOutOfRangeException) { return; }
                 executeNextStep();
-                System.Threading.Thread.Sleep(500);
+                System.Threading.Thread.Sleep(5000);
             }
         }
 
@@ -169,7 +169,7 @@ namespace Puppet_Master
                     break;
                 case "TRANSFER": transfer(parsed[1], parsed[2], parsed[3]); break;
                 case "EXESCRIPT": exeScript(parsed[1], parsed[2]); break;
-                case "LOADBALANCE": loadbalance(parsed[1]); break;
+                case "LOADBALANCE": loadbalance(parsed[1], Convert.ToInt32(parsed[2])); break;
                 case "HELLO": hello(parsed[1]); break;
                 case "LBDUMP": loadBalanceDump(parsed[1]); break;
             }
@@ -398,6 +398,7 @@ namespace Puppet_Master
         public delegate TransactionDTO TransferRemoteAsyncDelegate(TransactionDTO dto, string address);
         public delegate void CopyRemoteAsyncDelegate(int fileregister1, int semantics, int fileregister2, string salt);
         public delegate void ExecRemoteAsyncDelegate(List<string> filename);
+        public delegate void SwitchLoadBalancingRemoteAsyncDelegate(bool sw);
 
 
 
@@ -702,12 +703,18 @@ namespace Puppet_Master
             if (process[0] == 'd') { }
         }
 
-        private void loadbalance(string process) {
+        private void loadbalance(string process, int boolean) {
+            bool sw;
+            if(boolean == 1)
+                sw = true;
+            else
+                sw = false;
+
             if (process.StartsWith("m-"))
             {
                 MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(listOfMetaServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
-                RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.loadBalancing);
-                IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
+                SwitchLoadBalancingRemoteAsyncDelegate RemoteDel = new SwitchLoadBalancingRemoteAsyncDelegate(mdi.switchLoadBalancing);
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(sw,null, null);
             }
             else {
                 outputBox.Text = "Invalid process";

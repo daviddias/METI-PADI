@@ -43,7 +43,7 @@ public interface MyRemoteMetaDataInterface{
     void fail();
     void recover();
     void dump();
-    void loadBalancing();
+    void switchLoadBalancing(bool sw);
     void loadBalanceDump();
 
 
@@ -66,6 +66,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
     /* Atributes */
     static string localPort;
+    static string backPort;
     static string aMetaServerPort;
     static string bMetaServerPort;
     static int whoAmI; //0, 1 ou 2 to identify which Meta-Server it is 
@@ -86,7 +87,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public static Dictionary<string, FileHandler>[] fileTables = new Dictionary<string, FileHandler>[6];
     
     /* Constructors */
-    public MyRemoteMetaDataObject(){
+    public MyRemoteMetaDataObject()
+    {
         isfailed = false;
 
         for (int i = 0; i < 6; i++)
@@ -101,10 +103,12 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         log.Info("Meta-Data Server is up!");
     }
 
-    public MyRemoteMetaDataObject(string _localPort, string _aMetaServerPort, string _bMetaServerPort, string[] _dataServersPorts){
+    public MyRemoteMetaDataObject(string _localPort, string _aMetaServerPort, string _bMetaServerPort, string[] _dataServersPorts)
+    {
 
         isfailed = false;
         localPort = _localPort;
+        backPort = (Convert.ToInt32(localPort) + 2000).ToString();
         aMetaServerPort = _aMetaServerPort;
         bMetaServerPort = _bMetaServerPort;
 
@@ -141,11 +145,24 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         //load balancing timer
         timeLoad.AutoReset = true;
-        timeLoad.Enabled = true;
+        timeLoad.Enabled = false; // by default loadbalancing is deactivated
         timeLoad.Elapsed += new ElapsedEventHandler(onTime);
 
         log.Info("Meta Server " + whoAmI + " is up!");
     }
+
+    /* Loadbalancing switcher */
+    public void switchLoadBalancing(bool sw)
+    {
+        timeLoad.Enabled = sw;
+
+        if(sw)
+            log.Info("[METASERVER: switchLoadBalancing]  LoadBalancing is now activated");
+        else
+            log.Info("[METASERVER: switchLoadBalancing]  LoadBalancing is now deactivated");
+    }
+
+
 
     /* Event handler para o timer do loadbalancing */
     private void onTime(object source, ElapsedEventArgs e)
@@ -163,7 +180,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         // loadbalancing is made for the first (lower number) metaserver alive
         
         if(whoAmI == 0)
-            Console.Write("\n\ntimer\n\n"); //loadBalancing();
+            loadBalancing();
         else if (whoAmI == 1)
         {
             try
@@ -172,7 +189,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             }
             catch
             {
-                Console.Write("\n\ntimer\n\n"); //loadBalancing();
+                loadBalancing();
             }
         }
         else
@@ -189,7 +206,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
                 }
                 catch
                 {
-                    Console.Write("\n\ntimer\n\n"); //loadBalancing();
+                    loadBalancing();
                 }
             }
         }
@@ -209,7 +226,13 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     /* Logic */
     public string MetodoOla(){ return "[META_SERVER]   Ola eu sou o MetaData Server!"; }
 
-    public void alive() { log.Info("Yep, I'm alive =)"); }
+    public void alive()
+    {
+        if (!isfailed)
+            log.Info("Yep, I'm alive =)");
+        else
+            throw new SocketException();
+    }
 
     /************************************************************************
      *              Invoked Methods by Clients
@@ -520,9 +543,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public void fail()
     {
 
-        IChannel channel = ChannelServices.GetChannel(localPort);
-        ChannelServices.UnregisterChannel(channel);
-
+        //IChannel channel = ChannelServices.GetChannel(localPort);
+        //ChannelServices.UnregisterChannel(channel);
 
         isfailed = true;
         log.Info("[METASERVER: fail]    Success!");
@@ -534,22 +556,21 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         if (isfailed)
         {
-            log.Info("Registering again remote object for remote calls");
-            BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
-            provider.TypeFilterLevel = TypeFilterLevel.Full;
-            IDictionary props = new Hashtable();
-            //props["port"] = 8081;
-            props["port"] = localPort;
-            props["name"] = localPort;
-            TcpChannel channel = new TcpChannel(props, null, provider);
-            ChannelServices.RegisterChannel(channel, false);
+            //log.Info("Registering again remote object for remote calls");
+            //BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
+            //provider.TypeFilterLevel = TypeFilterLevel.Full;
+            //IDictionary props = new Hashtable();
+            ////props["port"] = 8081;
+            //props["port"] = localPort;
+            //props["name"] = localPort;
+            //TcpChannel channel = new TcpChannel(props, null, provider);
+            //ChannelServices.RegisterChannel(channel, false);
 
-        
             for (int i = 0; i < 6; i++)
             {
                 StreamReader sw = new StreamReader("backup-m" + whoAmI + "_table-" + i);
                 string s = sw.ReadLine();
-                while(!s.Equals(""))
+                while (!s.Equals(""))
                 {
                     char p = '|';
                     string[] parsed = s.Split(p);
@@ -570,16 +591,18 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
 
                     FileHandler fh = new FileHandler(filenameGlobal, fileSize, nbServers, dataPorts, localNames, readQuorum, writeQuorum, nFileAccess);
-                    fh.version =long.Parse(parsed[8]);
+                    fh.version = long.Parse(parsed[8]);
                     fh.isOpen = bool.Parse(parsed[9]);
 
                     fileTables[i].Add(filenameGlobal, fh);
 
                     s = sw.ReadLine();
-                    }
-                    sw.Close();
+                }
+                sw.Close();
             }
         }
+        isfailed = false;
+
         log.Info("Going to Request UPDATE on recovering");
         askForUpdate();
     }
