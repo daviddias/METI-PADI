@@ -316,9 +316,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         for (int i = 0; i < nbServers; i++)
             localNames[i] = Utils.genLocalName("m-" + whoAmI);
 
-        if (localNames[0] == localNames[1]) {
-            System.Console.WriteLine("BUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG!!!!!!!!!!!");
-        }
 
         //4. Create File-Handler 
         //Console.WriteLine("Creating new File Handle");
@@ -1333,7 +1330,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
 
     // LoadBalance Results
-    public void loadBalanceDump() {
+    public void loadBalanceDump()
+    {
 
         System.Console.WriteLine();
         System.Console.WriteLine("_______________[LOAD_BALANCE_STATS]______________");
@@ -1341,65 +1339,84 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         int LINES = 14;
 
+        calculateFileHeat();
         calculateMachineHeat();
         List<DataServerInfo> allDSI = new List<DataServerInfo>(dataServersMap.Values);
+        List<DataServerInfo> allDSIClone = new List<DataServerInfo>(allDSI);
 
         double maxheat = maxMachineHeat(allDSI);
-        int average = ((int)averageMachineHeat(allDSI) / (int)maxheat) * (LINES);
+        int average = (int)((averageMachineHeat(allDSI) / maxheat) * (LINES));
 
 
-        string top_c =   "_____ ";
-        string torso_c = "|   | ";
-        string empty_c = "      ";
+        string top_c =   "____ ";
+        string torso_c = "|  | ";
+        string empty_c = "     ";
 
-        char[][] chart = new char[LINES][];
+        string heat;
 
+        int DSICount = allDSIClone.Count;
         int top;
         string s;
         // Print chart
-        System.Console.WriteLine();
-        for (int current_line = 0; current_line < LINES; current_line++)
+        while (DSICount > 0)
         {
-            if ((LINES - average) == current_line)
+            System.Console.WriteLine();
+            for (int current_line = 0; current_line < LINES; current_line++)
             {
-                s = "AVG___";
-            }
-            else
-            {
-                s = "      ";
-            }
+                if ((LINES - average) == current_line)
+                {
+                    s = "AVG___";
+                }
+                else
+                {
+                    s = "      ";
+                }
 
-            foreach (DataServerInfo dsi in allDSI) {
-           
-                top = ((int)dsi.MachineHeat / (int)maxheat) * (LINES); //[0 , 19]
-                if ((LINES - top) == current_line)
+                foreach (DataServerInfo dsi in allDSI)
                 {
-                    s += top_c;
+
+                    top = (int)((dsi.MachineHeat / maxheat) * (LINES)); //[0 , 19]
+                    if ((LINES - top) == current_line)
+                    {
+                        s += top_c;
+                    }
+                    else if (current_line < (LINES - top))
+                    {
+                        s += empty_c;
+                    }
+                    else if (current_line > (LINES - top))
+                    {
+                        s += torso_c;
+                    }
+                    if (current_line == (LINES - 1))
+                    {
+                        allDSIClone.Remove(dsi);
+                    }
                 }
-                else if (current_line < (LINES - top))
-                {
-                    s += empty_c;
-                }
-                else if (current_line > (LINES - top))
-                {
-                    s += torso_c;
-                }
+                System.Console.WriteLine(s);
+            }
+            
+            s = "      ";
+            foreach (DataServerInfo dsi in allDSI)
+            {
+                s += "-----";
             }
             System.Console.WriteLine(s);
 
-        }
-        s = "       ";
-        foreach (DataServerInfo dsi in allDSI)
-        {
-            s += "------";
-        }
-        System.Console.WriteLine(s);
+            s = "      ";
+            foreach (DataServerInfo dsi in allDSI){
 
-        s = "       ";
-        foreach (DataServerInfo dsi in allDSI) {
-            s +=  dsi.dataServer + " ";
+
+                if (dsi.MachineHeat >= 100)
+                    heat = "HG";
+                heat = dsi.MachineHeat.ToString("00");
+                s += " " + heat + "  ";
+            }
+            System.Console.WriteLine(s);
+            System.Console.WriteLine();
+
+            DSICount = allDSIClone.Count;
+            allDSI = new List<DataServerInfo>(allDSIClone);
         }
-        System.Console.WriteLine(s);
-        System.Console.WriteLine();
     }
 }
