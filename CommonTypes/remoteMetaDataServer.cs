@@ -14,6 +14,8 @@ using System.Runtime.Remoting.Channels.Tcp;
 using log4net;
 using System.Collections;
 using System.Runtime.Serialization.Formatters;
+using System.Timers;
+
 
 
 
@@ -68,6 +70,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     static int whoAmI; //0, 1 ou 2 to identify which Meta-Server it is 
     static List<string> dataServersPorts = new List<string>();
     static Boolean recovering = false;
+    static System.Timers.Timer timeLoad = new System.Timers.Timer(60000); // timer que vai lançar o Loadbalancing de X em X milisegundos
+
     
 
     // Dict used for LoadBalancing and File Allocation
@@ -134,9 +138,35 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         Directory.SetCurrentDirectory(path);
 
+        //load balancing timer
+        timeLoad.AutoReset = true;
+        timeLoad.Enabled = true;
+        timeLoad.Elapsed += new ElapsedEventHandler(onTime);
+
         log.Info("Meta Server " + whoAmI + " is up!");
     }
 
+    /* Event handler para o timer do loadbalancing */
+    private void onTime(object source, ElapsedEventArgs e)
+    {
+        //MyRemoteMetaDataInterface[] mdi = new MyRemoteMetaDataInterface[2];
+        //mdi[0] = Utils.getRemoteMetaDataObj(aMetaServerPort);
+        //mdi[1] = Utils.getRemoteMetaDataObj(bMetaServerPort);
+        //if(whoAmI == 0)
+        //    loadBalancing();
+        //else if (whoAmI == 1)
+        //{
+        //    if(mdi[0].)
+        //    loadBalancing();
+        //}
+        //else
+        //{
+        //    loadBalancing();
+        //}
+
+
+        Console.Write("\n\ntimer\n\n");
+    }
 
     /* Para a thread nunca se desligar */
     public override object InitializeLifetimeService(){ return null; }

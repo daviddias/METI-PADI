@@ -10,7 +10,8 @@ public static class Utils
 {
 
     private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-    
+
+    private static Random random = new Random((int)DateTime.Now.Ticks);
 
     /************************************************************************
      *              Get Remote Reference to Meta Data Server 
@@ -130,7 +131,6 @@ public static class Utils
     public static string genLocalName(string metadataserverName)
     {
         char[] name = new char[16]; // Local names are 16 characters ASCII strings
-        Random random = new Random((int)DateTime.Now.Ticks);
 
         char[] invalidChar = System.IO.Path.GetInvalidFileNameChars();
 
