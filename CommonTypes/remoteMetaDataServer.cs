@@ -50,8 +50,8 @@ public interface MyRemoteMetaDataInterface{
     //usado por outros Meta-Servers
     Boolean lockFile(string filename);
     Boolean unlockFile(string filename);
-    void receiveUpdate(Dictionary<string, FileHandler>[] fileTable, Dictionary<string, DataServerInfo>[] newDataServersMap);
-    void sendUpdate();
+    void receiveUpdate(Dictionary<string, FileHandler>[] fileTable, Dictionary<string, DataServerInfo>[] newDataServersMap, bool loadBalancingUpdate);
+    void sendUpdate(bool loadBalancingUpdate);
 
 
 }
@@ -82,7 +82,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     
     
     static Boolean isfailed;
-
+    
     //Array of fileTables containing file Handlers
     public static Dictionary<string, FileHandler>[] fileTables = new Dictionary<string, FileHandler>[6];
     
@@ -217,8 +217,9 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public override object InitializeLifetimeService(){ return null; }
 
     /* delegates */
-    public delegate void prepareUpdateRemoteAsyncDelegate(Dictionary<string, FileHandler>[] newFileTable, Dictionary<string, DataServerInfo>[] newDataServersMap);
+    public delegate void prepareUpdateRemoteAsyncDelegate(Dictionary<string, FileHandler>[] newFileTable, Dictionary<string, DataServerInfo>[] newDataServersMap, bool loadBalancingUpdate);
     public delegate void askUpdateRemoteAsyncDelegate();
+    public delegate void sendUpdateRemoveAsyncDelegate(bool loadBalancingUpdate);
     public delegate TransactionDTO TransferRemoteAsyncDelegate(TransactionDTO dto, string address);
 
 
@@ -274,7 +275,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         fh.nFileAccess++;
 
         //5. Tells the other MetaServers to update
-        sendUpdate();
+        sendUpdate(false);
 
         log.Info("[METASERVER: open]    Success)!");
         return fh;
@@ -315,7 +316,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         filehandler.isOpen = false;
 
         //6. Tells the other MetaServers to update
-        sendUpdate();
+        sendUpdate(false);
 
 
         log.Info("[METASERVER: close]    Success)!");
@@ -404,7 +405,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         log.Info("[METASERVER: confirmCreate]    Success!");
 
         // 3. Send Updated metadata table to others Metadata Servers
-        sendUpdate();
+        sendUpdate(false);
     }
 
 
@@ -462,7 +463,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             fileTables[Utils.whichMetaServer(filehandler.filenameGlobal)].Remove(filehandler.filenameGlobal);
             log.Info("[METASERVER: confirmDelete]    Success!");
             // 3. Send Updated metadata table to others Metadata Servers
-            sendUpdate();
+            sendUpdate(false);
             return;
         }
 
@@ -534,7 +535,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         fileTables[Utils.whichMetaServer(filehandler.filenameGlobal)][filehandler.filenameGlobal].version = filehandler.version;
         
         // 3. Send Updated metadata table to others Metadata Servers
-        sendUpdate();
+        sendUpdate(false);
     }
 
     /************************************************************************
@@ -672,7 +673,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
     //public void updateHeatTable(List<HeatTableItem> table) { }
 
-    public void sendUpdate()
+    public void sendUpdate(bool loadBalancingUpdate)
     {
         MyRemoteMetaDataInterface[] mdi = new MyRemoteMetaDataInterface[2];
         mdi[0] = Utils.getRemoteMetaDataObj(aMetaServerPort);
@@ -684,7 +685,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         for (int i = 0; i < 2; i++)
         {
             prepareUpdateRemoteAsyncDelegate RemoteUpdate = new prepareUpdateRemoteAsyncDelegate(mdi[i].receiveUpdate);
-            IAsyncResult RemAr = RemoteUpdate.BeginInvoke(fileTables, dataServersMap_toSend, null, null);
+            IAsyncResult RemAr = RemoteUpdate.BeginInvoke(fileTables, dataServersMap_toSend, loadBalancingUpdate, null, null);
 
             log.Info(" UPDATE SENDED::  Updated metadata table sended in background to others Metadata Servers");
         }
@@ -731,27 +732,86 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         }
     }
 
-    public void receiveUpdate(Dictionary<string, FileHandler>[] newFileTable, Dictionary<string, DataServerInfo>[] newDataServersMap_received)
+    public void receiveUpdate(Dictionary<string, FileHandler>[] newFileTable, Dictionary<string, DataServerInfo>[] newDataServersMap_received, bool loadBalancingUpdate)
     {
         log.Info("receiveUpdated call received");
 
-        for (int i = 0; i < 6; i++)
-            if (recovering)
+        if (loadBalancingUpdate)
+        {
+            for (int i = 0; i < 6; i++)
             {
-                fileTables[i] = newFileTable[i];
-            }
-            else if (i != whoAmI * 2 || i != whoAmI * 2 + 1) // dont update the files that it is responsible
-                fileTables[i] = newFileTable[i];
-
-        recovering = false;
-
-        Dictionary<string, DataServerInfo> newDataServersMap = newDataServersMap_received[0];
-
-        foreach (string newPort in newDataServersMap.Keys) {
-            if (!dataServersMap.ContainsKey(newPort)){
-                dataServersPorts.Add(newPort);
+                fileTables[i] = newFileTable[i]; // ingles ver :)
             }
         }
+        else
+        {
+            for (int i = 0; i < 6; i++)
+                if (recovering)
+                {
+                    fileTables[i] = newFileTable[i];
+                }
+                else if (!(i == whoAmI * 2 || i == whoAmI * 2 + 1)) // dont update the files that it is responsible
+                    fileTables[i] = newFileTable[i];
+
+            recovering = false;
+        }
+
+
+
+
+
+
+
+        //Then reconstruct dataServerMap from filetables
+        Dictionary<string, DataServerInfo> updatedDataServersMap = new Dictionary<string, DataServerInfo>();
+
+        foreach (Dictionary<string, FileHandler> ftable in fileTables)
+        {
+            foreach (FileHandler fhandler in ftable.Values)
+            {
+                foreach (string dsport in fhandler.dataServersPorts)
+                {
+                    if (updatedDataServersMap.ContainsKey(dsport))
+                    {
+                        updatedDataServersMap[dsport].fileHandlers.Add(fhandler);
+                    }
+                    else
+                    {
+                        DataServerInfo dsinfo = new DataServerInfo();
+                        dsinfo.dataServer = dsport;
+                        dsinfo.fileHandlers.Add(fhandler);
+                        updatedDataServersMap.Add(dsport, dsinfo);
+                    }
+                }
+            }
+        }
+        dataServersMap = updatedDataServersMap;
+        calculateMachineHeat();
+
+
+        foreach (string dsport in newDataServersMap_received[0].Keys)
+        {
+            if (dataServersMap.ContainsKey(dsport)){
+                continue;
+            }else{
+                DataServerInfo dsinfo = new DataServerInfo();
+                dsinfo.MachineHeat = 0;
+                dsinfo.dataServer = dsport;
+                dataServersMap.Add(dsport, dsinfo);
+            }
+        }
+
+
+
+
+
+ //       Dictionary<string, DataServerInfo> newDataServersMap = newDataServersMap_received[0];
+
+//        foreach (string newPort in newDataServersMap.Keys) {
+ //           if (!dataServersMap.ContainsKey(newPort)){
+   //             dataServersPorts.Add(newPort);
+    //        }
+     //   }
 
         // save the filetables to disk on a file
 
@@ -823,8 +883,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
         for (int i = 0; i < 2; i++)
         {
-            askUpdateRemoteAsyncDelegate RemoteUpdate = new askUpdateRemoteAsyncDelegate(mdi[i].sendUpdate);
-            IAsyncResult RemAr = RemoteUpdate.BeginInvoke(null, null);
+            sendUpdateRemoveAsyncDelegate RemoteUpdate = new sendUpdateRemoveAsyncDelegate(mdi[i].sendUpdate);
+            IAsyncResult RemAr = RemoteUpdate.BeginInvoke(false, null, null);
 
             log.Info(" REQUEST UPDATE SENDED::  Contacted other metaservers to ask for theis updates!");
         }
@@ -969,7 +1029,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
                 log.Info(same);
             }
             log.Info("############################################################");
-           
 
 
             migrate(oldDataServers, newDataServers, sameDataServers, fhandler);
@@ -979,6 +1038,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         // 7. Update dataServerMap again
         updateDataServerMap(updatedFileHandlers);
         calculateMachineHeat();
+        sendUpdate(true); // Update everyone =D
 
     }
 
@@ -1362,7 +1422,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             }
         }
         dataServersMap = updatedDataServersMap;
-        sendUpdate(); // Update everyone =D
+        
     }
 
 
