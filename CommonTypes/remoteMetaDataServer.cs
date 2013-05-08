@@ -44,6 +44,8 @@ public interface MyRemoteMetaDataInterface{
     void recover();
     void dump();
     void switchLoadBalancing(bool sw);
+    void loadBalancing();
+
     void loadBalanceDump();
 
 
@@ -183,31 +185,16 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             loadBalancing();
         else if (whoAmI == 1)
         {
-            try
-            {
-                mdi[0].alive();
-            }
-            catch
-            {
-                loadBalancing();
-            }
+            try { mdi[0].alive(); }
+            catch { loadBalancing(); }
         }
         else
         {
-            try
-            {
-                mdi[0].alive();
-            }
+            try { mdi[0].alive(); }
             catch
             {
-                try
-                {
-                    mdi[1].alive();
-                }
-                catch
-                {
-                    loadBalancing();
-                }
+                try { mdi[1].alive();  }
+                catch { loadBalancing(); }
             }
         }
 
@@ -904,6 +891,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
      ***********************************************************************************************/
     public void loadBalancing()
     {
+        log.Info("LOAD BALANCING START");
         // Resume
         // 1. Calculate File-Heat and update File Handlers accordingly
         // 2. Put DataServerInfo objects in an array, Calculate Machine-Heat, sorted by ascending order
@@ -915,7 +903,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
 
         // 1 Calculate File-Heat and update File Handlers accordingly
-        log.Info("[LOADBALANCING]    Going to calculate File-Heats!");
+        //log.Info("[LOADBALANCING]    Going to calculate File-Heats!");
         calculateFileHeat();
         //At this point, dataServerMap should have the DataServerInfo as well :)
 
@@ -927,16 +915,20 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //var dataServerMapClone = dataServersMap.ToDictionary(entry => entry.Key, entry => entry.Value);
         List<DataServerInfo> sortedDataServerInfo = new List<DataServerInfo>(dataServerMapClone.Values);
 
-        log.Info("[LOADBALANCING]    Machine Heat Before Load Balance:");
+       // log.Info("[LOADBALANCING]    Machine Heat Before Load Balance:");
+
+        log.Info("MAX Machine Heat: " + maxMachineHeat(sortedDataServerInfo));
+        log.Info("AVG Machine Heat: " + averageMachineHeat(sortedDataServerInfo));
         
+
         int cicles = 0;
 
         do
         {
             sortedDataServerInfo.Sort((s1, s2) => s1.MachineHeat.CompareTo(s2.MachineHeat)); //SORTING LIKE A BOSS =D
 
-            System.Console.WriteLine("SORTED DATA SERVER INFO");
-            foreach (DataServerInfo dsi in sortedDataServerInfo) { System.Console.WriteLine("DataServer - " + dsi.dataServer + "   Heat: " + dsi.MachineHeat); }
+          //  System.Console.WriteLine("SORTED DATA SERVER INFO");
+            //foreach (DataServerInfo dsi in sortedDataServerInfo) { System.Console.WriteLine("DataServer - " + dsi.dataServer + "   Heat: " + dsi.MachineHeat); }
             
             cicles++;
 
@@ -945,57 +937,58 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             int first_position = 0;
             int last_position = sortedDataServerInfo.Count - 1;
 
-            log.Info("[LOADBALANCING]    Going to start the matching process!");
-            System.Console.WriteLine("Number of Iterations: " + iterations);
+        //    log.Info("[LOADBALANCING]    Going to start the matching process!");
+       //     System.Console.WriteLine("Number of Iterations: " + iterations);
             
             for (int i = 0; i < iterations; i++)
             {    
                 thermalDissipation(sortedDataServerInfo[first_position + i], sortedDataServerInfo[last_position - i]);
             }
 
-            log.Info("[LOADBALANCING]    Cicle Done!");
+      //      log.Info("[LOADBALANCING]    Cicle Done!");
             
             // 4. Calculate average heat, if goal is not reached, do cicle again ( to step 2 but before recalculate Machine-Heat again)
             if (cicles > Constants.LOADBALANCER_CICLE_LIMIT)
                 break;
             
-            log.Info("[LOADBALANCING]    Going to calculate machine heats!");
+    //        log.Info("[LOADBALANCING]    Going to calculate machine heats!");
             calculateMachineHeatClone(dataServerMapClone);
-
+            /*
             foreach (DataServerInfo dsi in sortedDataServerInfo)
             {
                 System.Console.WriteLine("Data Server: " + dsi.dataServer + "   Heat: " + dsi.MachineHeat);
             }
-  
+  */
         } while ( !(maxMachineHeat(sortedDataServerInfo) <= (averageMachineHeat(sortedDataServerInfo) * Constants.LOADBALANCER_THRESHOLD)));
 
-        log.Info("[LOADBALANCING]    Machine Heat After Load Balance:");
+
+       
+        /*log.Info("[LOADBALANCING]    Machine Heat After Load Balance:");
 
         foreach (DataServerInfo dsi in sortedDataServerInfo)
         {
             System.Console.WriteLine("Data Server: " + dsi.dataServer + "   Heat: " + dsi.MachineHeat);
         }
-
+        */
         // 5. Create struture <fileHandler, arrayOfnextDataServers>>
-        log.Info("[LOADBALANCING]    Going to create migrationDataStructure!");
+       // log.Info("[LOADBALANCING]    Going to create migrationDataStructure!");
         Dictionary<FileHandler, List<string>> migrationData = createMigrationDataStructure(sortedDataServerInfo);
 
-        foreach (FileHandler fh in migrationData.Keys) {
-            System.Console.WriteLine("File: " + fh.filenameGlobal + ":");
+       // foreach (FileHandler fh in migrationData.Keys) {
+           // System.Console.WriteLine("File: " + fh.filenameGlobal + ":");
+            /*
             foreach (string dataserver in migrationData[fh]) {
                 System.Console.WriteLine("DataServer: " + dataserver);
-            }
-        }
+            }*/
+        //}
         
         // 6. Do the migrations
         List<FileHandler> updatedFileHandlers = new List<FileHandler>();
         foreach (FileHandler fhandler in migrationData.Keys)
         {
-
-            
             List<string> nextDataServers = migrationData[fhandler]; //nextDataServers Contem aqueles que são novos e aqueles que não foram alteradoss
 
-           
+            /*
             log.Info("############ " + fhandler.filenameGlobal);
             log.Info("LAST");
             foreach (string last in fhandler.dataServersPorts)
@@ -1006,39 +999,42 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             foreach (string next in nextDataServers)
             {
                 log.Info(next);
-            }
+            }*/
 
 
-
+            //log.Info("STEP 5");
             List<string> oldDataServers = checkOld(fhandler, nextDataServers);
-            log.Info("OLD");
+            /*log.Info("OLD");
             foreach (string old in oldDataServers)
             {
                 log.Info(old);
-            }
+            }*/
             List<string> newDataServers = checkNew(fhandler, nextDataServers);
-            log.Info("NEW");
+            /*log.Info("NEW");
             foreach (string nuevo in newDataServers)
             {
                 log.Info(nuevo);
             }
+            */
             List<string> sameDataServers = checkSame(fhandler, nextDataServers);
-            log.Info("SAME");
+            /*log.Info("SAME");
             foreach (string same in sameDataServers)
             {
                 log.Info(same);
             }
             log.Info("############################################################");
-
+            */
 
             migrate(oldDataServers, newDataServers, sameDataServers, fhandler);
             updatedFileHandlers.Add(fhandler);
         }
-      
+        log.Info("LOAD BALANCING FINISH");
+        
         // 7. Update dataServerMap again
         updateDataServerMap(updatedFileHandlers);
         calculateMachineHeat();
         sendUpdate(true); // Update everyone =D
+        
 
     }
 
@@ -1111,7 +1107,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             return;     //Sossega a bicharola!
 
         while (index < hotest.fileHandlers.Count){
-            foreach (FileHandler f in coldest.fileHandlers)
+            /*foreach (FileHandler f in coldest.fileHandlers)
             {
                 log.Info("COLDEST: " + f.filenameGlobal);
             }
@@ -1119,7 +1115,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             {
                 log.Info("HOTEST: " + f.filenameGlobal);
             }
-            
+            */
             if(hotest.fileHandlers[index].isOpen){
                 index++;
                 continue;
@@ -1149,7 +1145,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
                 continue;
             }
             */
-            log.Info("I'm going to move from hotest: " + hotest.fileHandlers[index].filenameGlobal);
+          //  log.Info("I'm going to move from hotest: " + hotest.fileHandlers[index].filenameGlobal);
 
             coldest.fileHandlers.Add(hotest.fileHandlers[index]);
             hotest.fileHandlers.Remove(hotest.fileHandlers[index]);
@@ -1321,7 +1317,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //1.1 Fazer o migrate, se resultar bem cool, se não actualizar a lista nova e colocar o antigo
         //1.2 Actualizar no File Handler a referência do nome para o data server
         //2 Actualizar a lista de data servers (same+new)
-
+        /*
         log.Info("ACTUAL SERVER PORTS for file: " + fhandler.filenameGlobal);
         foreach(string dp in fhandler.dataServersPorts){
             log.Info(dp);
@@ -1348,7 +1344,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             log.Info(dp);
         }
         log.Info("--");
-
+        */
 
         int dscount = newDataServers.Count;
        
@@ -1367,14 +1363,14 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         result.AddRange(sameDataServers);
 
         fhandler.dataServersPorts = result.Distinct().ToArray();
-
+        /*
         log.Info("NEW SERVER PORTS for file: " + fhandler.filenameGlobal);
         foreach (string dp in fhandler.dataServersPorts)
         {
             log.Info(dp);
         }
         log.Info("--");
-        
+        */
         return;
     }
 

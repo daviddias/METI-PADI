@@ -27,7 +27,7 @@ namespace Puppet_Master
          ****************************************************************************************/
 
         private static readonly ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-        
+
 
         int firstMetaServerPort = 8000;
         int firstClientPort = 8100;
@@ -48,7 +48,7 @@ namespace Puppet_Master
         public Dictionary<string, Process> runningProcesses = new Dictionary<string, Process>();
 
         TcpChannel channel;
-        
+
 
         /****************************************************************************************
         *                                  GUI functions
@@ -65,7 +65,7 @@ namespace Puppet_Master
 
         /**
          * Opens a Script File and puts it's steps onto Script Text Box
-         */ 
+         */
         private void openScriptFile_Click(object sender, EventArgs e)
         {
             var FD = new System.Windows.Forms.OpenFileDialog();
@@ -73,7 +73,7 @@ namespace Puppet_Master
             {
                 string fileToOpen = FD.FileName;
                 String[] allLines = File.ReadAllLines(fileToOpen);
-                scriptTextBox.Lines = allLines;                
+                scriptTextBox.Lines = allLines;
             }
         }
 
@@ -122,7 +122,7 @@ namespace Puppet_Master
             //Process it
             String[] lines = scriptTextBox.Lines;
             try { if (lines[0] == "") { return; } }
-            catch (IndexOutOfRangeException) {  return;  }
+            catch (IndexOutOfRangeException) { return; }
             String nextSept = lines[0];
 
             lines = lines.Where((val, idx) => idx != 0).ToArray();
@@ -134,7 +134,7 @@ namespace Puppet_Master
 
 
 
-            String[] p = {" ", "\t" ,", "};
+            String[] p = { " ", "\t", ", " };
             string[] parsed = nextSept.Split(p, StringSplitOptions.None);
 
             switch (parsed[0])
@@ -148,7 +148,7 @@ namespace Puppet_Master
                 case "DELETE": delete(parsed[1], parsed[2]); break;
                 case "OPEN": open(parsed[1], parsed[2]); break;
                 case "CLOSE": close(parsed[1], parsed[2]); break;
-                case "READ": read(parsed[1],  Convert.ToInt32(parsed[2]), parsed[3], Convert.ToInt32(parsed[4])); break;
+                case "READ": read(parsed[1], Convert.ToInt32(parsed[2]), parsed[3], Convert.ToInt32(parsed[4])); break;
                 case "WRITE":
                     if (parsed[3].StartsWith("\""))
                     {
@@ -162,16 +162,18 @@ namespace Puppet_Master
                     }
                     break;
                 case "DUMP": dump(parsed[1]); break;
-                case "COPY": 
+                case "COPY":
                     for (int i = 6; i < parsed.Length; i++)
                         parsed[5] += " " + parsed[i];
                     copy(parsed[1], Convert.ToInt32(parsed[2]), parsed[3], Convert.ToInt32(parsed[4]), parsed[5]);
                     break;
                 case "TRANSFER": transfer(parsed[1], parsed[2], parsed[3]); break;
                 case "EXESCRIPT": exeScript(parsed[1], parsed[2]); break;
-                case "LOADBALANCE": loadbalance(parsed[1], Convert.ToInt32(parsed[2])); break;
+                case "SWITCHLOADBALANCE": loadbalanceSwitch(parsed[1], Convert.ToInt32(parsed[2])); break;
+                case "LOADBALANCE": loadbalance(parsed[1]); break;
                 case "HELLO": hello(parsed[1]); break;
                 case "LBDUMP": loadBalanceDump(parsed[1]); break;
+                case "SLEEP": Thread.Sleep(Convert.ToInt32(parsed[1])); break;
             }
         }
 
@@ -198,7 +200,7 @@ namespace Puppet_Master
             //Data-Servers - Args <PortLocal>
             for (int i = 0; i < nbDataServers; i++)
             {
-                runningProcesses.Add("d-" + i , new Process());
+                runningProcesses.Add("d-" + i, new Process());
                 runningProcesses["d-" + i].StartInfo.Arguments = (firstDataServerPort + i).ToString() + " " + i;
                 listOfDataServerPorts += (firstDataServerPort + i).ToString() + " ";
                 runningProcesses["d-" + i].StartInfo.FileName = dataServerPath;
@@ -207,13 +209,13 @@ namespace Puppet_Master
                 System.Threading.Thread.Sleep(500);
             }
 
-           
-            
+
+
 
             //Meta-Data Servers - Args <MetaDataPortLocal> <MetaDataPortOtherA> <MetaDataPortOtherB> [DataServerPort] [DataServer Port] [DataServer Port]...
             String meta0 = (firstMetaServerPort + 0).ToString() + " " + (firstMetaServerPort + 1).ToString() + " " + (firstMetaServerPort + 2).ToString();
             runningProcesses.Add("m-" + 0, new Process());
-            runningProcesses["m-" + 0].StartInfo.Arguments = meta0 + " " +  listOfDataServerPorts;
+            runningProcesses["m-" + 0].StartInfo.Arguments = meta0 + " " + listOfDataServerPorts;
             runningProcesses["m-" + 0].StartInfo.FileName = metaServerPath;
             runningProcesses["m-" + 0].Start();
             Console.WriteLine("Meta-Server 0 Started");
@@ -245,7 +247,7 @@ namespace Puppet_Master
             for (int k = 0; k < nbClients; k++)
             {
                 runningProcesses.Add("c-" + k, new Process());
-                runningProcesses["c-" + k].StartInfo.Arguments = (firstClientPort + k).ToString() + " " +  ("c-" + k + " ") + listOfMetaServerPorts;
+                runningProcesses["c-" + k].StartInfo.Arguments = (firstClientPort + k).ToString() + " " + ("c-" + k + " ") + listOfMetaServerPorts;
                 listOfClientPorts += (firstClientPort + k).ToString() + " ";
                 runningProcesses["c-" + k].StartInfo.FileName = clientPath;
                 runningProcesses["c-" + k].Start();
@@ -253,19 +255,19 @@ namespace Puppet_Master
 
             this.nbClients = nbClients;
             this.nbDataServers = nbDataServers;
-            
+
             this.listOfDataServerPorts = listOfDataServerPorts.Split(' ');
             this.listOfMetaServerPorts = listOfMetaServerPorts.Split(' ');
             this.listOfClientPorts = listOfClientPorts.Split(' ');
 
-            for(int i = 0; i < this.listOfMetaServerPorts.Length; i++)
+            for (int i = 0; i < this.listOfMetaServerPorts.Length; i++)
             {
                 this.listOfMetaServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfMetaServerPorts[i]) + 2000).ToString();
             }
 
             this.listOfDataServerBackdoorPorts = this.listOfDataServerPorts;
 
-            for (int i = 0; i < this.listOfDataServerBackdoorPorts.Length-1; i++)
+            for (int i = 0; i < this.listOfDataServerBackdoorPorts.Length - 1; i++)
             {
                 this.listOfDataServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfDataServerPorts[i]) + 100).ToString();
             }
@@ -320,7 +322,7 @@ namespace Puppet_Master
                 {
                     this.listOfMetaServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfMetaServerPorts[i]) + 2000).ToString();
                 }
-                
+
             }
 
             // Data Servers
@@ -340,7 +342,7 @@ namespace Puppet_Master
 
                 if (this.listOfDataServerPorts.Length <= processNum)
                 {
-                    dataPorts = new String[processNum+1];
+                    dataPorts = new String[processNum + 1];
                     this.listOfDataServerPorts.CopyTo(dataPorts, 0);
                 }
                 dataPorts[processNum] = (firstDataServerPort + processNum).ToString();
@@ -399,6 +401,7 @@ namespace Puppet_Master
         public delegate void CopyRemoteAsyncDelegate(int fileregister1, int semantics, int fileregister2, string salt);
         public delegate void ExecRemoteAsyncDelegate(List<string> filename);
         public delegate void SwitchLoadBalancingRemoteAsyncDelegate(bool sw);
+        public delegate void LoadBalancingRemoteAsyncDelegate();
 
 
 
@@ -411,7 +414,7 @@ namespace Puppet_Master
 
             MyRemoteMetaDataInterface mdi;
             MyRemoteDataInterface dsi;
-       
+
             // Metadata Servers
             if (process.StartsWith("m-"))
             {
@@ -473,7 +476,7 @@ namespace Puppet_Master
                 //dsi.freeze();
                 RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(dsi.freeze);
                 IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
-                log.Info("Freeze sent to " + process);           
+                log.Info("Freeze sent to " + process);
             }
             else
                 outputBox.Text = "Cannot freeze the process " + process;
@@ -494,7 +497,7 @@ namespace Puppet_Master
                 //dsi.unfreeze();
                 RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(dsi.unfreeze);
                 IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
-                log.Info("Unfreeze sent to " + process);                   
+                log.Info("Unfreeze sent to " + process);
             }
             else
                 outputBox.Text = "Cannot unfreeze the process " + process;
@@ -513,9 +516,9 @@ namespace Puppet_Master
             IAsyncResult RemAr = RemoteDel.BeginInvoke(filename, nbDataServers, readQuorum, writeQuorum, null, null);
         }
 
-        
 
-        private void open(string process,string filename)
+
+        private void open(string process, string filename)
         {
             // verifies if process is already running, if not start it
             if (!isRunning(process))
@@ -525,7 +528,7 @@ namespace Puppet_Master
             //rci.open(filename);
             OpenRemoteAsyncDelegate RemoteDel = new OpenRemoteAsyncDelegate(rci.open);
             IAsyncResult RemAr = RemoteDel.BeginInvoke(filename, null, null);
-        
+
         }
 
 
@@ -541,7 +544,8 @@ namespace Puppet_Master
             IAsyncResult RemAr = RemoteDel.BeginInvoke(filename, null, null);
         }
 
-        private void delete(string process, string filename) {
+        private void delete(string process, string filename)
+        {
             // verifies if process is already running, if not start it
             if (!isRunning(process))
                 startAlone(process);
@@ -550,7 +554,7 @@ namespace Puppet_Master
             //rci.create(filename, nbDataServers, readQuorum, writeQuorum);
             DeleteRemoteAsyncDelegate RemoteDel = new DeleteRemoteAsyncDelegate(rci.delete);
             IAsyncResult RemAr = RemoteDel.BeginInvoke(filename, null, null);
-            return; 
+            return;
         }
 
         private void read(string process, int reg, string semantics, int byteArrayRegister)
@@ -563,7 +567,8 @@ namespace Puppet_Master
             int MONOTONIC = 2;
             int semantic;
 
-            switch (semantics) {
+            switch (semantics)
+            {
                 case "default": semantic = DEFAULT; break;
                 case "monotonic": semantic = MONOTONIC; break;
                 default: semantic = DEFAULT; break;
@@ -575,7 +580,7 @@ namespace Puppet_Master
             IAsyncResult RemAr = RemoteDel.BeginInvoke(reg, semantic, byteArrayRegister, null, null);
         }
 
-  
+
         private void write(string process, int reg, string content)
         {
             // verifies if process is already running, if not start it
@@ -601,7 +606,7 @@ namespace Puppet_Master
             IAsyncResult RemAr = RemoteDel.BeginInvoke(reg, byteArrayRegister, null, null);
         }
 
-        private void dump(string process) 
+        private void dump(string process)
         {
             // verifies if process is already running, if not start it
             if (!isRunning(process))
@@ -637,7 +642,7 @@ namespace Puppet_Master
             MyRemoteDataInterface rdi = Utils.getRemoteDataServerObj(listOfDataServerPorts[(int)Char.GetNumericValue(process[2])]);
             //rci.create(filename, nbDataServers, readQuorum, writeQuorum);
             TransferRemoteAsyncDelegate RemoteDel = new TransferRemoteAsyncDelegate(rdi.transferFile);
-            IAsyncResult RemAr = RemoteDel.BeginInvoke(dto, "tcp://localhost:"+port+"/sdasdssd", null, null);
+            IAsyncResult RemAr = RemoteDel.BeginInvoke(dto, "tcp://localhost:" + port + "/sdasdssd", null, null);
         }
 
 
@@ -661,7 +666,7 @@ namespace Puppet_Master
             remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
             CopyRemoteAsyncDelegate RemoteDel = new CopyRemoteAsyncDelegate(rci.copy);
             IAsyncResult RemAr = RemoteDel.BeginInvoke(reg1, semantic, reg2, salt, null, null);
-        
+
         }
 
         private void exeScript(string process, string scriptFile)
@@ -693,7 +698,7 @@ namespace Puppet_Master
         {
             outputBox.Text = process;
             System.Threading.Thread.Sleep(500);
-            if(process[0] == 'c')
+            if (process[0] == 'c')
             {
                 remoteClientInterface rci = Utils.getRemoteClientObj(listOfClientPorts[(int)Char.GetNumericValue(process[2])]);
                 string result = rci.metodoOla();
@@ -703,9 +708,10 @@ namespace Puppet_Master
             if (process[0] == 'd') { }
         }
 
-        private void loadbalance(string process, int boolean) {
+        private void loadbalanceSwitch(string process, int boolean)
+        {
             bool sw;
-            if(boolean == 1)
+            if (boolean == 1)
                 sw = true;
             else
                 sw = false;
@@ -714,14 +720,32 @@ namespace Puppet_Master
             {
                 MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(listOfMetaServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
                 SwitchLoadBalancingRemoteAsyncDelegate RemoteDel = new SwitchLoadBalancingRemoteAsyncDelegate(mdi.switchLoadBalancing);
-                IAsyncResult RemAr = RemoteDel.BeginInvoke(sw,null, null);
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(sw, null, null);
             }
-            else {
+            else
+            {
                 outputBox.Text = "Invalid process";
             }
         }
 
-        private void loadBalanceDump(string process) {
+
+        private void loadbalance(string process)
+        {
+            if (process.StartsWith("m-"))
+            {
+                MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(listOfMetaServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
+                LoadBalancingRemoteAsyncDelegate RemoteDel = new LoadBalancingRemoteAsyncDelegate(mdi.loadBalancing);
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
+            }
+            else
+            {
+                outputBox.Text = "Invalid process";
+            }
+        }
+
+
+        private void loadBalanceDump(string process)
+        {
             if (process.StartsWith("m-"))
             {
                 MyRemoteMetaDataInterface mdi = Utils.getRemoteMetaDataObj(listOfMetaServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
@@ -733,6 +757,86 @@ namespace Puppet_Master
                 outputBox.Text = "Invalid process";
             }
         }
-        
+
+
+
+
+
+
+
+
+
+
+
+
+        /* FOR EXAUSTIVE TESTING */
+
+        private void button_Run_From_File(object sender, EventArgs e)
+        {
+            var FD = new System.Windows.Forms.OpenFileDialog();
+            if (FD.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                string fileToOpen = FD.FileName;
+                String[] allLines = File.ReadAllLines(fileToOpen);
+
+                foreach (String nextSept in allLines)
+                {
+
+
+                    if (nextSept.StartsWith("#"))
+                        continue;
+                    //currentStep.Text = nextSept;
+
+
+
+                    String[] p = { " ", "\t", ", " };
+                    string[] parsed = nextSept.Split(p, StringSplitOptions.None);
+
+                    switch (parsed[0])
+                    {
+                        case "START": start(Convert.ToInt32(parsed[1]), Convert.ToInt32(parsed[2])); break;
+                        case "FAIL": fail(parsed[1]); break;
+                        case "RECOVER": recover(parsed[1]); break;
+                        case "FREEZE": freeze(parsed[1]); break;
+                        case "UNFREEZE": unfreeze(parsed[1]); break;
+                        case "CREATE": create(parsed[1], parsed[2], Convert.ToInt32(parsed[3]), Convert.ToInt32(parsed[4]), Convert.ToInt32(parsed[5])); break;
+                        case "DELETE": delete(parsed[1], parsed[2]); break;
+                        case "OPEN": open(parsed[1], parsed[2]); break;
+                        case "CLOSE": close(parsed[1], parsed[2]); break;
+                        case "READ": read(parsed[1], Convert.ToInt32(parsed[2]), parsed[3], Convert.ToInt32(parsed[4])); break;
+                        case "WRITE":
+                            if (parsed[3].StartsWith("\""))
+                            {
+                                for (int i = 4; i < parsed.Length; i++)
+                                    parsed[3] += " " + parsed[i];
+                                write(parsed[1], Convert.ToInt32(parsed[2]), parsed[3]);
+                            }
+                            else
+                            {
+                                write(parsed[1], Convert.ToInt32(parsed[2]), Convert.ToInt32(parsed[3]));
+                            }
+                            break;
+                        case "DUMP": dump(parsed[1]); break;
+                        case "COPY":
+                            for (int i = 6; i < parsed.Length; i++)
+                                parsed[5] += " " + parsed[i];
+                            copy(parsed[1], Convert.ToInt32(parsed[2]), parsed[3], Convert.ToInt32(parsed[4]), parsed[5]);
+                            break;
+                        case "TRANSFER": transfer(parsed[1], parsed[2], parsed[3]); break;
+                        case "EXESCRIPT": exeScript(parsed[1], parsed[2]); break;
+                        case "SWITCHLOADBALANCE": loadbalanceSwitch(parsed[1], Convert.ToInt32(parsed[2])); break;
+                        case "LOADBALANCE": loadbalance(parsed[1]); break;
+                        case "HELLO": hello(parsed[1]); break;
+                        case "LBDUMP": loadBalanceDump(parsed[1]); break;
+                        case "SLEEP": Thread.Sleep(Convert.ToInt32(parsed[1])); break;
+                    }
+                }
+            }
+
+
+
+        }
+
+
     }
 }

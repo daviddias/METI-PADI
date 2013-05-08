@@ -37,6 +37,7 @@
             this.label2 = new System.Windows.Forms.Label();
             this.outputBox = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
+            this.button1 = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // openScriptFile
@@ -119,11 +120,22 @@
             this.label3.TabIndex = 9;
             this.label3.Text = "Output";
             // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(13, 101);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(105, 23);
+            this.button1.TabIndex = 10;
+            this.button1.Text = "Run From File";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button_Run_From_File);
+            // 
             // puppetMasterGUI
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(967, 330);
+            this.Controls.Add(this.button1);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.outputBox);
             this.Controls.Add(this.label2);
@@ -151,6 +163,7 @@
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.TextBox outputBox;
         private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.Button button1;
     }
 }
 
