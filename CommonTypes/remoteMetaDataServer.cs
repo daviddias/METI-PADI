@@ -203,6 +203,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public delegate void askUpdateRemoteAsyncDelegate();
     public delegate void sendUpdateRemoveAsyncDelegate(bool loadBalancingUpdate);
     public delegate TransactionDTO TransferRemoteAsyncDelegate(TransactionDTO dto, string address);
+    public delegate Boolean lockFileRemoveAsyncDelegate(string Filename);
+    public delegate Boolean unlockFileRemoveAsyncDelegate(string Filename);
 
 
 
@@ -354,7 +356,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         fileTables[Utils.whichMetaServer(filename)].Add(filename, fh);
 
         //6. Lock File accross Meta-Data Servers
-        //TODO
+        lockFile(fh.filenameGlobal);        
 
         //7. Return File-Handler
         log.Info("[METASERVER: create]    Success!");
@@ -372,7 +374,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         }
 
         //2. Faz unlock ao ficheiro
-        fileTables[Utils.whichMetaServer(filename)][filename].isLocked = false;
+        unlockFile(filename);
         log.Info("[METASERVER: confirmCreate]    Success!");
 
         // 3. Send Updated metadata table to others Metadata Servers
@@ -401,14 +403,15 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         FileHandler fh = fileTables[Utils.whichMetaServer(filename)][filename];
 
         //4. O ficheiro está bloqueado?
-        if (fh.isLocked)
+        if (fileTables[Utils.whichMetaServer(filename)][filename].isLocked)
         {
             log.Info("[METASERVER: delete]    The File is locked!");
             return null;
         }
 
         //5.Faz lock ao ficheiro
-        fh.isLocked = true;
+        lockFile(fh.filenameGlobal);
+        propagateLocks(fh.filenameGlobal);
 
         //6. Increment access count to this file
         fh.nFileAccess++;
@@ -437,7 +440,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             return;
         }
 
-        fileTables[Utils.whichMetaServer(filehandler.filenameGlobal)][filehandler.filenameGlobal].isLocked = false;
+        unlockFile(filehandler.filenameGlobal);
+        propagateUnlocks(filehandler.filenameGlobal);
         log.Info("[METASERVER: confirmDelete]    File was not deleted!");
     }
 
@@ -460,13 +464,15 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         }
 
         //3. O ficheiro está bloqueado?
-        if (filehandler.isLocked){
+        if (fileTables[Utils.whichMetaServer(filehandler.filenameGlobal)][filehandler.filenameGlobal].isLocked)
+        {
             log.Info("[METASERVER: write]    The File is locked!");
             return null;
         }
 
         //4.Faz lock ao ficheiro
-        filehandler.isLocked = true;
+        lockFile(filehandler.filenameGlobal);
+        propagateLocks(filehandler.filenameGlobal);
 
         //5. Increment access count to this file
         filehandler.nFileAccess++;
@@ -486,7 +492,8 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         }
 
         //2. Faz unlock ao ficheiro
-        filehandler.isLocked = false;
+        unlockFile(filehandler.filenameGlobal);
+        propagateUnlocks(filehandler.filenameGlobal);
         log.Info("[METASERVER: confirmWrite]    Success!");
 
         //3. Updates file
@@ -622,12 +629,62 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
     public Boolean unlockFile(string Filename) {
         if (!fileTables[Utils.whichMetaServer(Filename)][Filename].isLocked)
-            log.Info("[METASERVER: lockFile]    The File was already locked! (not normal)");
+            log.Info("[METASERVER: lockFile]    The File was not locked! (not normal)");
 
         fileTables[Utils.whichMetaServer(Filename)][Filename].isLocked = false;
 
-        log.Info("[METASERVER: lockFile]    File Locked Successful!");    
+        log.Info("[METASERVER: lockFile]    File unlocked Successful!");    
         return true; 
+    }
+
+    public void propagateLocks(string Filename)
+    {
+        //Propagate file lock.
+        MyRemoteMetaDataInterface[] mdi = new MyRemoteMetaDataInterface[2];
+        mdi[0] = Utils.getRemoteMetaDataObj(aMetaServerPort);
+        mdi[1] = Utils.getRemoteMetaDataObj(bMetaServerPort);
+
+        for (int i = 0; i < 2; i++)
+        {
+
+            //Invoque lockFile on remote MetaServer
+            lockFileRemoveAsyncDelegate RemoteUpdate = new lockFileRemoveAsyncDelegate(mdi[i].lockFile);
+            try
+            {
+                IAsyncResult RemAr = RemoteUpdate.BeginInvoke(Filename, null, null);
+            }
+            catch (SocketException e)
+            {
+                log.Info(" METASERVER:  lockFile:  Could not contact destination metaserver, no problem, it'll be updated when it recovers");
+            }
+
+            log.Info(" METASERVER:  lockFile:  Contacted metaserver to update on lockFile!");
+        }
+    }
+
+    public void propagateUnlocks(string Filename)
+    {
+        //Propagate file lock.
+        MyRemoteMetaDataInterface[] mdi = new MyRemoteMetaDataInterface[2];
+        mdi[0] = Utils.getRemoteMetaDataObj(aMetaServerPort);
+        mdi[1] = Utils.getRemoteMetaDataObj(bMetaServerPort);
+
+        for (int i = 0; i < 2; i++)
+        {
+
+            //Invoque lockFile on remote MetaServer
+            unlockFileRemoveAsyncDelegate RemoteUpdate = new unlockFileRemoveAsyncDelegate(mdi[i].unlockFile);
+            try
+            {
+                IAsyncResult RemAr = RemoteUpdate.BeginInvoke(Filename, null, null);
+            }
+            catch
+            {
+                log.Info(" METASERVER:  unlockFile:  Could not contact destination metaserver, no problem, it'll be updated when it recovers");
+            }
+
+            log.Info(" METASERVER:  unlockFile:  Contacted metaserver to update on unlockFile!");
+        }
     }
 
     public void sendUpdate(bool loadBalancingUpdate)

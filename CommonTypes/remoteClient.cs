@@ -535,7 +535,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         fh = mdi.write(this.clientID, fh);
         if (fh == null)
         {
-            log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " Meta-Server didn't allow Write on File: " + Utils.whichMetaServer(fh.filenameGlobal));
+            log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " Meta-Server didn't allow Write on File ");
             return;
         }
 
@@ -629,7 +629,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         //7. Tell Meta-Data Server to Confirm Creation 
         MyRemoteMetaDataInterface mdiConfirm = Utils.getMetaDataRemoteInterface(fh.filenameGlobal, metaServerPorts);
-        mdi.confirmWrite(this.clientID, fh, true);
+        mdiConfirm.confirmWrite(this.clientID, fh, true);
         
         //Update client file handler and save the content in ByteArrayRegister
         fh.isLocked = false; //update the file handler on client side 

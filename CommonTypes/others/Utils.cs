@@ -29,10 +29,12 @@ public static class Utils
             try 
             { 
                 mdi.alive();
+                log.Info("O META SERVER " + metaServerToContact + "está vivo");
                 break; //this one is alive
             }
             catch
             {
+                log.Info("O META SERVER " + metaServerToContact + "não está vivo");
                 metaServerToContact = metaServerToContact + 3;
                 if (metaServerToContact > 5) { metaServerToContact = 0; }
                 continue;
