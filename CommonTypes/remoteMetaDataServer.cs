@@ -503,6 +503,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     public void fail()
     {
       //  log.Info("My LOCAL PORT IS:" + localPort);
+      
         TcpChannel channel = (TcpChannel) ChannelServices.GetChannel(localPort);
         ChannelServices.UnregisterChannel(channel);
 
