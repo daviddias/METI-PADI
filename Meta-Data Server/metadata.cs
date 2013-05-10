@@ -22,27 +22,25 @@ class MetaDataServer{
             dataServersPorts[i] = args[i + 3];
         }
         
-
-
         BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
         provider.TypeFilterLevel = TypeFilterLevel.Full;
         IDictionary props = new Hashtable();
         //props["port"] = 8081;
         props["port"] = thisMetaServerPort;
         props["name"] = thisMetaServerPort;
+        Console.WriteLine(thisMetaServerPort);
         
         TcpChannel channel = new TcpChannel(props, null, provider);
         ChannelServices.RegisterChannel(channel, false);
 
-        props["port"] = (Convert.ToInt32(thisMetaServerPort) + 2000).ToString(); // backdoor puppet master
-        props["name"] = (Convert.ToInt32(thisMetaServerPort) + 2000).ToString();
+        props["port"] = Convert.ToString(Convert.ToInt32(thisMetaServerPort) + 2000); // backdoor puppet master
+        props["name"] = Convert.ToString(Convert.ToInt32(thisMetaServerPort) + 2000);
+        
         TcpChannel channelBack = new TcpChannel(props, null, provider);
         ChannelServices.RegisterChannel(channelBack, false);
 
-        MyRemoteMetaDataObject mdo = new MyRemoteMetaDataObject(thisMetaServerPort, aMetaServerPort,bMetaServerPort,dataServersPorts);
+        MyRemoteMetaDataObject mdo = new MyRemoteMetaDataObject(thisMetaServerPort, aMetaServerPort, bMetaServerPort, dataServersPorts);
         RemotingServices.Marshal(mdo, "MyRemoteMetaDataObjectName", typeof(MyRemoteMetaDataObject));
-
-
 
         System.Console.WriteLine("<enter> para sair...");
         System.Console.ReadLine();

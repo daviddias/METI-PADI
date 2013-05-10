@@ -107,8 +107,10 @@ public static class Utils
 
     public static MyRemoteDataInterface getRemoteDataServerObj(string port)
     {
+        log.Info("VOU BUSCAR O REMOTE OBJECT");
         string address = "localhost:" + port + "/MyRemoteDataObjectName";
         MyRemoteDataInterface obj = (MyRemoteDataInterface)Activator.GetObject(typeof(MyRemoteDataInterface), "tcp://" + address);
+        log.Info("CONSEGUI");
         return obj;
     }
 

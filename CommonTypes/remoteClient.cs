@@ -10,7 +10,7 @@ using System.Runtime.Remoting.Channels.Tcp;
 using System.Net.Sockets;
 using System.Threading;
 using log4net;
-using CommonTypes;
+
 
 
 public interface remoteClientInterface { 
@@ -171,20 +171,38 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         //3. Contact Data-Servers to Prepare
         log.Info("CLIENT :: c-" + this.clientID + " CREATE" + " Initiating 2PC");
-        string transactionID = Utils.generateTransactionID(); 
+        //System.Threading.Thread.Sleep(2000);
+        string transactionID = Utils.generateTransactionID();
+        sendPREPARECREATE:
         foreach (string dataServerPort in fh.dataServersPorts)
         {
+            
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
             prepareCreateRemoteAsyncDelegate RemoteDel = new prepareCreateRemoteAsyncDelegate(di.prepareCreate);
             AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.prepareCreateRemoteAsyncCallBack);
             TransactionDTO prepateDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);
-            IAsyncResult RemAr = RemoteDel.BeginInvoke(prepateDTO, RemoteCallback, null);
+            try
+            {
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(prepateDTO, RemoteCallback, null);
+            }
+            catch
+            {
+                log.Info("O Data Server " + dataServerPort + " não faz mal, se não atingirmos o quorum tentamos de novo");
+            }
             //di.prepareCreate(this.clientID, filename); SYNC
         }
         log.Info("CLIENT :: c-" + this.clientID + " CREATE" + " 2PC 1st Phase - Prepare Create Assync Calls Sent");
 
+
+        DateTime timeSentPrepareCreate = DateTime.Now;
+
         while (true)
         {
+
+            if(DateTime.Now.Subtract(timeSentPrepareCreate).TotalSeconds > 10.0){
+                log.Info("CLIENT :: c-" + this.clientID + " CREATE" + " Didn't reach quorum in time, sending assyncs again");
+                goto sendPREPARECREATE;
+            }
             System.Threading.Thread.Sleep(10); // Wait 10ms to avoid that the second server receive a commit before a prepare
             lock (createQUORUM)
             {
@@ -326,7 +344,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
     public static void prepareDeleteRemoteAsyncCallBack(IAsyncResult ar)
     {
-        prepareDeleteRemoteAsyncDelegate del = (prepareDeleteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
+        prepareDeleteRemoteAsyncDelegate del = (prepareDeleteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;        
         TransactionDTO assyncResult = del.EndInvoke(ar);
         log.Info("CLIENT :: c-" + assyncResult.clientID + " DELETE" + " Call Back Received - PrepareDelete for transaction: " + assyncResult.transactionID);
         if (assyncResult.success)
@@ -369,19 +387,36 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         //3. Contact data-server to prepare
         log.Info("CLIENT :: c-" + this.clientID + " DELETE" + " Initiating 2PC");
         string transactionID = Utils.generateTransactionID(); 
+        sendPREPAREDELETE:
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
             prepareDeleteRemoteAsyncDelegate RemoteDel = new prepareDeleteRemoteAsyncDelegate(di.prepareDelete);
             AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.prepareDeleteRemoteAsyncCallBack);
             TransactionDTO prepareDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);
-            IAsyncResult RemAr = RemoteDel.BeginInvoke(prepareDTO, RemoteCallback, null);
-            //di.prepareDelete(this.clientID, fh.dataServersFiles[dataServerPort]); SYNC
+            try
+            {
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(prepareDTO, RemoteCallback, null);
+            }
+            catch
+            {
+                log.Info("O Data Server " + dataServerPort + " não faz mal, se não atingirmos o quorum tentamos de novo");
+            }
+                //di.prepareDelete(this.clientID, fh.dataServersFiles[dataServerPort]); SYNC
         }
         log.Info("CLIENT :: c-" + this.clientID + " DELETE" + " 2PC 1st Phase - Prepare Create Assync Calls Sent");
 
+        DateTime timeSentPrepareCreate = DateTime.Now;
+
         while (true)
         {
+
+            if (DateTime.Now.Subtract(timeSentPrepareCreate).TotalSeconds > 10.0)
+            {
+                log.Info("CLIENT :: c-" + this.clientID + " DELETE" + " Didn't reach quorum in time, sending assyncs again");
+                goto sendPREPAREDELETE;
+               
+            }
             System.Threading.Thread.Sleep(10); // Wait 10ms to avoid that the second server receive a commit before a prepare
 
             lock (deleteQUORUM)
@@ -513,6 +548,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         //4. Contact Data-Servers to Prepare
         log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " Iniciating 2PC for File: " + Utils.whichMetaServer(fh.filenameGlobal));
         string transactionID = Utils.generateTransactionID();
+        sendPREPAREWRITE:
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
@@ -521,13 +557,27 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             TransactionDTO prepareDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);    
             prepareDTO.version = fh.version;
             prepareDTO.filecontent = byteArray;
-            IAsyncResult RemAr = RemoteDel.BeginInvoke(prepareDTO, RemoteCallback, null);
+            try
+            {
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(prepareDTO, RemoteCallback, null);
+            }
+            catch
+            {
+                log.Info("O Data Server " + dataServerPort + " não faz mal, se não atingirmos o quorum tentamos de novo");
+            }
             //di.prepareWrite(this.clientID, fh.dataServersFiles[dataServerPort], byteArray); //SYNC
         }
         log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " 2PC 1st Phase Async Calls Sent");
 
+        DateTime timeSentPrepareCreate = DateTime.Now;
+
         while (true)
         {
+            if (DateTime.Now.Subtract(timeSentPrepareCreate).TotalSeconds > 10.0)
+            {
+                log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " Didn't reach quorum in time, sending assyncs again");
+                goto sendPREPAREWRITE;
+            }
             System.Threading.Thread.Sleep(10); // Wait 10s to avoid that the second server receive a commit before a prepare
 
             lock (writeQUORUM)
@@ -656,21 +706,35 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         //3. Contact Data-Server to read
         string transactionID = Utils.generateTransactionID(); 
+        sendREAD:
         foreach (string dataServerPort in fh.dataServersPorts)
         {
             MyRemoteDataInterface di = Utils.getRemoteDataServerObj(dataServerPort);
             readRemoteAsyncDelegate RemoteDel = new readRemoteAsyncDelegate(di.read);
             AsyncCallback RemoteCallback = new AsyncCallback(remoteClient.ReadRemoteAsyncCallBack);
             TransactionDTO readDTO = new TransactionDTO(transactionID, this.clientID, fh.dataServersFiles[dataServerPort]);
-            IAsyncResult RemAr = RemoteDel.BeginInvoke(readDTO, RemoteCallback, null);
+            try
+            {
+                IAsyncResult RemAr = RemoteDel.BeginInvoke(readDTO, RemoteCallback, null);
+            }
+            catch
+            {
+                log.Info("O Data Server " + dataServerPort + " não faz mal, se não atingirmos o quorum tentamos de novo");
+            }
             //content = di.read(fh.dataServersFiles[dataServerPort], semantics); //SYNC
         }
         log.Info("CLIENT :: c-" + this.clientID + " Read" + " Assync Calls Sent");
 
+        DateTime timeSentPrepareCreate = DateTime.Now;
 
         byte[] content = null; //File Content
         while (true)
         {
+            if (DateTime.Now.Subtract(timeSentPrepareCreate).TotalSeconds > 10.0)
+            {
+                log.Info("CLIENT :: c-" + this.clientID + " READ" + " Didn't reach quorum in time, sending assyncs again");
+                goto sendREAD;
+            }
             System.Threading.Thread.Sleep(10); // Wait 10ms to avoid that the second server receive a commit before a prepare
 
             lock (readQUORUM)

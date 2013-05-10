@@ -24,12 +24,12 @@ class DataServer
         ChannelServices.RegisterChannel(channel, false);
 
 
-        props["port"] = (Convert.ToInt32(dataServerPort) + 500).ToString(); // backdoor puppet master
-        props["name"] = (Convert.ToInt32(dataServerPort) + 500).ToString();
+        props["port"] =  Convert.ToString(Convert.ToInt32(dataServerPort) + 2000); // backdoor puppet master
+        props["name"] =  Convert.ToString(Convert.ToInt32(dataServerPort) + 2000);
         TcpChannel channelBack = new TcpChannel(props, null, provider);
         ChannelServices.RegisterChannel(channelBack, false);
 
-        MyRemoteDataObject dao = new MyRemoteDataObject(Int32.Parse(serverNumber));
+        MyRemoteDataObject dao = new MyRemoteDataObject(Int32.Parse(serverNumber), dataServerPort);
         RemotingServices.Marshal(dao, "MyRemoteDataObjectName", typeof(MyRemoteDataObject));
 
         System.Console.WriteLine("<enter> para sair...");

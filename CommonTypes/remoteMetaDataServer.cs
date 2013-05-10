@@ -342,9 +342,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             localNames[i] = Utils.genLocalName("m-" + whoAmI);
 
         //4. Create File-Handler 
-        //Console.WriteLine("Creating new File Handle");
         fh = new FileHandler(filename, 0, nbServers, selectedDataServers, localNames, readQuorum, writeQuorum, 1);
-        //Console.WriteLine("Created new File Handle");
         
         //4.1 (new for load balancing) update DataServerInfo of dataServerMap
         foreach (String dsp in selectedDataServers)
@@ -500,13 +498,13 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
     }
 
     /************************************************************************
-     *              Invoked Methods by Pupper-Master
+     *              Invoked Methods by Puppet-Master
      ************************************************************************/
     public void fail()
     {
-
-        //IChannel channel = ChannelServices.GetChannel(localPort);
-        //ChannelServices.UnregisterChannel(channel);
+      //  log.Info("My LOCAL PORT IS:" + localPort);
+        TcpChannel channel = (TcpChannel) ChannelServices.GetChannel(localPort);
+        ChannelServices.UnregisterChannel(channel);
 
         isfailed = true;
         log.Info("[METASERVER: fail]    Success!");
@@ -517,17 +515,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         log.Info("Starting recovering procedure");
 
         if (isfailed)
-        {
-            //log.Info("Registering again remote object for remote calls");
-            //BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
-            //provider.TypeFilterLevel = TypeFilterLevel.Full;
-            //IDictionary props = new Hashtable();
-            ////props["port"] = 8081;
-            //props["port"] = localPort;
-            //props["name"] = localPort;
-            //TcpChannel channel = new TcpChannel(props, null, provider);
-            //ChannelServices.RegisterChannel(channel, false);
-
+        { /*
             for (int i = 0; i < 6; i++)
             {
                 StreamReader sw = new StreamReader("backup-m" + whoAmI + "_table-" + i);
@@ -561,12 +549,22 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
                     s = sw.ReadLine();
                 }
                 sw.Close();
-            }
+            }*/
+
+            BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
+            provider.TypeFilterLevel = TypeFilterLevel.Full;
+            IDictionary props = new Hashtable();
+            props["port"] = localPort;
+            props["name"] = localPort;
+            TcpChannel channel = new TcpChannel(props, null, provider);
+            ChannelServices.RegisterChannel(channel, false);
+            log.Info("Registered the channel again");           
         }
         isfailed = false;
-
         log.Info("Going to Request UPDATE on recovering");
         askForUpdate();
+
+     
     }
 
     public void dump()
@@ -632,7 +630,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         return true; 
     }
 
-    
     public void sendUpdate(bool loadBalancingUpdate)
     {
         MyRemoteMetaDataInterface[] mdi = new MyRemoteMetaDataInterface[2];

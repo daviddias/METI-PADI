@@ -358,7 +358,7 @@ namespace Puppet_Master
                 listOfDataServerBackdoorPorts = new string[listOfDataServerPorts.Length];
                 for (int i = 0; i < this.listOfDataServerPorts.Length; i++)
                 {
-                    this.listOfDataServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfDataServerPorts[i]) + 500).ToString();
+                    this.listOfDataServerBackdoorPorts[i] = (Convert.ToInt32(this.listOfDataServerPorts[i]) + 2000).ToString();
                 }
             }
 
@@ -418,7 +418,9 @@ namespace Puppet_Master
             // Metadata Servers
             if (process.StartsWith("m-"))
             {
-                mdi = Utils.getRemoteMetaDataObj(listOfMetaServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
+                string backdoor = listOfMetaServerBackdoorPorts[(int)Char.GetNumericValue(process[2])];
+                mdi = Utils.getRemoteMetaDataObj(backdoor);
+                log.Info("Backdoor of meta " + backdoor);
                 //mdi.fail();
                 RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(mdi.fail);
                 IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);
@@ -426,7 +428,9 @@ namespace Puppet_Master
             // Data Servers
             else if (process.StartsWith("d-"))
             {
-                dsi = Utils.getRemoteDataServerObj(listOfDataServerBackdoorPorts[(int)Char.GetNumericValue(process[2])]);
+                string backdoor = listOfDataServerBackdoorPorts[(int)Char.GetNumericValue(process[2])];
+                dsi = Utils.getRemoteDataServerObj(backdoor);
+                log.Info("Backdoor of data " + backdoor);
                 //dsi.fail();
                 RemoteAsyncDelegate RemoteDel = new RemoteAsyncDelegate(dsi.fail);
                 IAsyncResult RemAr = RemoteDel.BeginInvoke(null, null);

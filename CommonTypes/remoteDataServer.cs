@@ -1,4 +1,4 @@
-﻿using CommonTypes;
+﻿
 using log4net;
 using System;
 using System.Collections;
@@ -96,10 +96,16 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     public static int firstDataServerPort = 9000;
 
     public static int myNumber;
+    public static string myport;
+
+    public static List<string> listOfTransactionsIDAlreadySeen = new List<string>(); //To avoid do same prepare two times
+    
+
 
     //Construtor
-    public MyRemoteDataObject(int dataServerNumber)
+    public MyRemoteDataObject(int dataServerNumber, string _myport)
     {
+        myport = _myport;
         mutationList = new List<MutationListItem>();
         fileAndVersion = new Dictionary<string, int>();
 
@@ -197,6 +203,17 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             Monitor.Exit(mutationList);
         }
 
+        if (listOfTransactionsIDAlreadySeen.Contains(dto.transactionID))
+        {
+            log.Info("PREPAREWRITE Already replied this one");
+            newDTO.success = false;
+            return newDTO;
+        }
+        else
+        {
+            listOfTransactionsIDAlreadySeen.Add(dto.transactionID);
+        }
+
         //Verifica a existencia do ficheiro
         if (!File.Exists(dto.filenameForDataServer))
         {
@@ -278,6 +295,18 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             Monitor.Exit(mutationList);
         }
 
+        if (listOfTransactionsIDAlreadySeen.Contains(dto.transactionID))
+        {
+            log.Info("PREPARECREATE Already replied this one");
+            newDTO.success = false;
+            return newDTO;
+        }
+        else
+        {
+            listOfTransactionsIDAlreadySeen.Add(dto.transactionID);
+        }
+
+
         FileStream fs;
 
         fs = File.OpenRead(dto.filenameForDataServer);
@@ -300,6 +329,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     public TransactionDTO prepareCreate(TransactionDTO dto) {
         TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameForDataServer);
 
+
         if (isfailed == true)
         {
             log.Info("PREPARECREATE This server is 'failed' can't comply with the request");
@@ -313,6 +343,16 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
+        }
+
+
+        if(listOfTransactionsIDAlreadySeen.Contains(dto.transactionID)){
+            log.Info("PREPARECREATE Already replied this one");
+            newDTO.success = false;
+            return newDTO;
+        }
+        else{
+            listOfTransactionsIDAlreadySeen.Add(dto.transactionID);
         }
 
         //Verifica a existencia do ficheiro
@@ -391,6 +431,18 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
+        }
+
+
+        if (listOfTransactionsIDAlreadySeen.Contains(dto.transactionID))
+        {
+            log.Info("DELETE Already replied this one");
+            newDTO.success = false;
+            return newDTO;
+        }
+        else
+        {
+            listOfTransactionsIDAlreadySeen.Add(dto.transactionID);
         }
 
         // Verifica a existencia do ficheiro
@@ -632,20 +684,12 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             return;
         }
 
+        log.Info("my port is:" + myport);
+        TcpChannel channel = (TcpChannel)ChannelServices.GetChannel(myport);
+        ChannelServices.UnregisterChannel(channel);
+
+
         saveStateToDisk();
-
-        IChannel[] defaultTCPChannel = ChannelServices.RegisteredChannels;
-        for (int channelCount = 0; channelCount < defaultTCPChannel.Length; channelCount++)
-        {
-            //Locate My registerd channel
-            if (defaultTCPChannel[channelCount].ChannelName == Convert.ToString(firstDataServerPort+myNumber))
-            {
-                //Release(Unregister) the Channel assigned to this Instance
-                ChannelServices.UnregisterChannel(defaultTCPChannel[channelCount]);
-                break;
-            }
-        }
-
 
 
         isfailed = true;
@@ -657,16 +701,15 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     public void recover() {
         
         recoverStateFromDisk();
-
         BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
         provider.TypeFilterLevel = TypeFilterLevel.Full;
         IDictionary props = new Hashtable();
-        //props["port"] = 8081;
-        props["port"] = Convert.ToString(firstDataServerPort + myNumber);
-        props["name"] = Convert.ToString(firstDataServerPort + myNumber);
+        props["port"] = myport;
+        props["name"] = myport;
         TcpChannel channel = new TcpChannel(props, null, provider);
         ChannelServices.RegisterChannel(channel, false);
-
+        log.Info("Registered the channel again");  
+        
         isfailed = false;
         imAlive();
         log.Info("RECOVER Success!");
