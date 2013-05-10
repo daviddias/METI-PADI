@@ -55,21 +55,17 @@ public static class Utils
         return (int)(number % 6);
     }
 
-
-
     /************************************************************************
      *              Parse port number from given address 
      ************************************************************************/
     public static string getPortOfAddress(string address)
     {
-
         string[] words = address.Split(':');
         if (words.Count() != 3)
         {
-            System.Console.WriteLine("[UTILS:  getPortOfAddress]    Malformed address");
+            System.Console.WriteLine("UTILS:  getPortOfAddress - Malformed address");
             return null;
         }
-
 
         string[] port = words[2].Split('/');
 
@@ -80,7 +76,6 @@ public static class Utils
         }
 
         return port[0];
-
     }
 
 
@@ -97,7 +92,6 @@ public static class Utils
 
         // and if you need it as a string...
         return BitConverter.ToString(bytes);
-
     }
 
 
@@ -131,9 +125,7 @@ public static class Utils
     public static string genLocalName(string metadataserverName)
     {
         char[] name = new char[16]; // Local names are 16 characters ASCII strings
-
         char[] invalidChar = System.IO.Path.GetInvalidFileNameChars();
-
 
         for (int i = 0; i < 16; i++)
         {
@@ -146,7 +138,6 @@ public static class Utils
                 while (Array.Exists(invalidChar, element => element == c))
                     c = (char)random.Next(32, 126);
                 name[i] = c;
-
             }
         }
 

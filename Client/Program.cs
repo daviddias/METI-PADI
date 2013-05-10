@@ -10,7 +10,6 @@ using System.Runtime.Serialization.Formatters;
 
 class Client
 {
-   
     static void Main(string[] args)
     {
         //Clients - Args <clientPort> <clientID> <meta0Port> <meta1Port> <meta2Port> 
@@ -29,38 +28,7 @@ class Client
         remoteClient rc = new remoteClient(clientID, metaServerPorts);
         RemotingServices.Marshal(rc, "RemoteClientName", typeof(remoteClient));
 
-        //MyRemoteMetaDataInterface meta_obj = rc.connectMetaServer(MS1_Address);
-        //MyRemoteDataInterface data_obj = rc.connectDataServer(DS1_Address);
-
-        //metaServerConnectivityTest(meta_obj);
-        //rc.dataServerConnectivityTest(data_obj);
-
-        //TESTING AREA
-        /*
-        string cliendID = "1";
-        string filename = "ruicamacho.txt";
-        byte[] content = StrToByteArray("Estou a tentar fazer um teste aqui pah!");
-
-
-        data_obj.freeze();
-        Console.WriteLine(data_obj.prepareCreate(cliendID, filename));
-        data_obj.freeze();
-        Console.WriteLine(data_obj.commitCreate(cliendID, filename));
-
-        
-        Console.WriteLine(data_obj.prepareWrite(cliendID, filename,content));
-        data_obj.freeze();
-        Console.WriteLine(data_obj.commitWrite(cliendID, filename));
-
-        data_obj.freeze();
-        Console.WriteLine(System.Text.Encoding.Default.GetString(data_obj.read(@"C:\"+filename, DEFAULT)));
-
-        Console.WriteLine(data_obj.prepareDelete(cliendID, filename));
-        data_obj.freeze();
-        Console.WriteLine(data_obj.commitDelete(cliendID, filename));
-        */
-
-        Console.WriteLine("[CLIENT  Main]: Enter para sair do cliente!");
+        Console.WriteLine("[ c " + clientPort + " ] Running, click enter to exit");
         Console.ReadLine();
     }
 }

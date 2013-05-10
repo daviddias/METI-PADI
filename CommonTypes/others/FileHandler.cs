@@ -20,10 +20,6 @@ public class FileHandler
     public double heat;
     public Dictionary<string, string> dataServersFiles = new Dictionary<string, string>(); // store the local filename for each dataserver (dataserver, localFileName)
 
-
-
-
-
     /* Who has opened this File */
     public bool isOpen;
     public List<string> byWhom = new List<string>();

@@ -1,1 +1,0 @@
-WRITE c-0, 0, "Content F1"

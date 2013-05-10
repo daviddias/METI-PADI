@@ -37,7 +37,6 @@ public interface MyRemoteMetaDataInterface{
     void alive(); //usado pelo cliente para verificar que este meta-data está vivo
     
     void receiveAlive(string port); //usado pelo Data-Server para dizer que está vivo
-    
 
     //usado pelo Puppet-Master
     void fail();
@@ -45,17 +44,13 @@ public interface MyRemoteMetaDataInterface{
     void dump();
     void switchLoadBalancing(bool sw);
     void loadBalancing();
-
     void loadBalanceDump();
-
 
     //usado por outros Meta-Servers
     Boolean lockFile(string filename);
     Boolean unlockFile(string filename);
     void receiveUpdate(Dictionary<string, FileHandler>[] fileTable, Dictionary<string, DataServerInfo>[] newDataServersMap, bool loadBalancingUpdate);
     void sendUpdate(bool loadBalancingUpdate);
-
-
 }
 
 
@@ -243,7 +238,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             return null;
         }
 
-
         //2.Does the file exist?
         if (!fileTables[Utils.whichMetaServer(Filename)].ContainsKey(Filename))
         {
@@ -275,8 +269,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
          * 4. Tells other meta-data
          */
 
-        //String Filename = filehandler.fileName;
-
         //1. Is MetaServer Able to Respond (Fail)
         if (isfailed)
         {
@@ -305,33 +297,30 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         //6. Tells the other MetaServers to update
         sendUpdate(false);
 
-
         log.Info("[METASERVER: close]    Success)!");
     }
-
 
 
     public FileHandler create(string clientID, string filename, int nbServers, int readQuorum, int writeQuorum)
     {
         FileHandler fh;
         //1. Is MetaServer Able to Respond (Fail)
-        //if (isfailed)
-        //{
-        //    log.Info("[METASERVER: create]    The server has is on 'fail'!");
-        //    return null;
-        //}
+        if (isfailed)
+        {
+            log.Info("[METASERVER: create]    The server is on 'fail'!");
+            return null;
+        }
 
         //2. Does the file already exists? 
         if (fileTables[Utils.whichMetaServer(filename)].ContainsKey(filename))
         {
             log.Info("[METASERVER: create]    File already exists");
-            return null; //TODO return exception here! 
+            return null; 
         }
 
         //3. Decide where the fill will be hosted
         //3.1 There are enought Data Servers in the system to meet the required replication?
         if (nbServers > dataServersMap.Count)
-            //dataServersPorts.Count)
         {
             log.Info("[METASERVER: create]    There aren't enought Data Servers to meet the required replication");
             fh = new FileHandler(filename, 0, 0, new string[0], new string[0], readQuorum, writeQuorum, 1); // if there aren't enough data servers meta server sends always nbServer = 0 
@@ -340,16 +329,13 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         
         //3.2 Select the first enougths DataServers to store the data - DUMB WAY
         string[] selectedDataServers = new string[nbServers];
-        List<DataServerInfo> listOfDataServersAvailable = dataServersMap.Values.ToList();   
+        List<DataServerInfo> listOfDataServersAvailable = dataServersMap.Values.ToList();
+        listOfDataServersAvailable.Sort((s1, s2) => s1.MachineHeat.CompareTo(s2.MachineHeat)); 
         for (int i = 0; i < nbServers; i++)
         {
-            //selectedDataServers[i] = dataServersPorts[i];
-            // %% TODO - Use info from Load Balacing(dataServerMap) to decide which will go
             selectedDataServers[i] = listOfDataServersAvailable[i].dataServer;
         }
 
-
-        
         // 3.3 Generate localfilenames
         string[] localNames = new string[nbServers];
         for (int i = 0; i < nbServers; i++)
@@ -399,7 +385,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
     public FileHandler delete(string clientID, string filename)
     {
-
         //1. Is the metaserver able to respond?
         if (isfailed)
         {
@@ -462,9 +447,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
 
     public FileHandler write(string clientID, FileHandler filehandler)
     {
-
-        //Boolean flag = false; wut???
-
         //1. Is MetaServer Able to Respond (Fail)
         if (isfailed)
         {
@@ -479,27 +461,19 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
             return null; //TODO return exception here! 
         }
 
-        //log.Info("[METASERVER: write]    File exists!");
-
         //3. O ficheiro está bloqueado?
         if (filehandler.isLocked){
             log.Info("[METASERVER: write]    The File is locked!");
             return null;
         }
 
-        //4. O cliente tem o ficheiro aberto?
-        // Esta verificacao ja é feita no lado do cliente!
-
-        //Console.WriteLine("[METASERVER: write]    Client had opened the file!");
-
-
-        //5.Faz lock ao ficheiro
+        //4.Faz lock ao ficheiro
         filehandler.isLocked = true;
 
-        //6. Increment access count to this file
+        //5. Increment access count to this file
         filehandler.nFileAccess++;
 
-        //8. Devolve o filehandler ao cliente
+        //6. Devolve o filehandler ao cliente
         log.Info("[METASERVER: write]    Success!");
         return filehandler;
     }
@@ -658,8 +632,7 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         return true; 
     }
 
-    //public void updateHeatTable(List<HeatTableItem> table) { }
-
+    
     public void sendUpdate(bool loadBalancingUpdate)
     {
         MyRemoteMetaDataInterface[] mdi = new MyRemoteMetaDataInterface[2];
@@ -709,12 +682,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
                 sw.WriteLine(s);
             }
 
-            /*s = "";
-            for (int k = 0 ; k < dataServersPorts.Count - 1 ; k++)
-            {
-                s += dataServersPorts[k] + ":";
-            }
-            sw.WriteLine(s);*/
             sw.Close();
         }
     }
@@ -1035,7 +1002,6 @@ public class MyRemoteMetaDataObject : MarshalByRefObject, MyRemoteMetaDataInterf
         calculateMachineHeat();
         sendUpdate(true); // Update everyone =D
         
-
     }
 
 

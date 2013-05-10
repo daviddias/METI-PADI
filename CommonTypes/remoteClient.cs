@@ -15,16 +15,16 @@ using CommonTypes;
 
 public interface remoteClientInterface { 
     //usado pelo puppet-master
-    void open(string filename);                                                         //DONE
-    void close(string filename);                                                        //DONE
-    void create(string filename, int nbDataServers, int readQuorum, int writeQuorum);   //DONE                   
-    void delete(string filename);                                                       //DONEs
-    void write(int reg, byte[] byteArray);                                              //DONE
-    void write(int reg, int byteArray);                                                 //DONE
-    void read(int reg, int semantics, int byteArray);                                   //DONE
+    void open(string filename);                                                         
+    void close(string filename);                                                        
+    void create(string filename, int nbDataServers, int readQuorum, int writeQuorum);                      
+    void delete(string filename);                                                       
+    void write(int reg, byte[] byteArray);                                              
+    void write(int reg, int byteArray);                                                 
+    void read(int reg, int semantics, int byteArray);                                   
     void exeScript(List<string> commands);
     void copy(int reg1, int semantics, int reg2, string salt);
-    string metodoOla(); //testing communication
+    string metodoOla(); //this method exists for communication testing purposes
     void dump();                                                                       
 }
 
@@ -41,7 +41,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     public static List<byte[]> byteArrayRegisterOLD;
     public static List<ByteArrayRecord> byteArrayRegister;
 
-   
     //Construtor
     public remoteClient(string ID, string[] metaServerPorts)
     {
@@ -68,7 +67,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         createQUORUM = new Dictionary<string, int>();
         deleteQUORUM = new Dictionary<string, int>();
 
-        log.Info("Client: - " + this.clientID + " -  is up!");
+        log.Info("CLIENT :: " + this.clientID + " -  is up!");
     }
 
     /* (tune)I'm gonna live forever lalala*/
@@ -92,7 +91,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         foreach (FileHandler fh in fileRegister)
             if (fh.filenameGlobal == filename)
                 return fh;
-        log.Info("Couldn't find a File Handler with this filename: " + filename + "  on client");
+        log.Info("CLIENT :: Couldn't find a File Handler with this filename: " + filename + " on client");
         return null;
     }
 
@@ -106,10 +105,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             if (byteArrayRegisterOLD[i] == null)
                 return i;
         }
-        log.Info("All byte Arrays are full"); 
+        log.Info("CLIENT :: All ByteArraysRegisters are occupied"); 
         return -1;
     }
-
 
     /**************************************************************************************************
      *          
@@ -118,11 +116,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
      **************************************************************************************************/
 
 
-
     /*------------------------------------------------------------------------         
      *                                   CREATE
      *-----------------------------------------------------------------------*/
-
     // Delegates
     public delegate TransactionDTO prepareCreateRemoteAsyncDelegate(TransactionDTO dto);
     public delegate TransactionDTO commitCreateRemoteAsyncDelegate(TransactionDTO dto);
@@ -134,7 +130,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
         prepareCreateRemoteAsyncDelegate del = (prepareCreateRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
         TransactionDTO assyncResult = del.EndInvoke(ar);
-        log.Info(assyncResult.clientID + " CREATE ::  Call Back Received - PrepareCreate for transaction: " + assyncResult.transactionID);
+        log.Info("CLIENT :: c-" + assyncResult.clientID + " CREATE" + " Call Back Received - PrepareCreate for transaction: " + assyncResult.transactionID);
         if (assyncResult.success)
         {
             if (createQUORUM.ContainsKey(assyncResult.transactionID)) { createQUORUM[assyncResult.transactionID]++; }
@@ -147,7 +143,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {  
         commitCreateRemoteAsyncDelegate del = (commitCreateRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
         TransactionDTO assyncResult = del.EndInvoke(ar);
-        log.Info(assyncResult.clientID + " CREATE ::  Call Back Received - CommitCreate for transaction: " + assyncResult.transactionID);
+        log.Info("CLIENT :: c-" + assyncResult.clientID + " CREATE" + " Call Back Received - CommitCreate for transaction: " + assyncResult.transactionID);
         if (assyncResult.success)
         {
             if (createQUORUM.ContainsKey(assyncResult.transactionID)) { createQUORUM[assyncResult.transactionID]++; }
@@ -162,20 +158,19 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         //1. Find out which Meta-Server to Call
         MyRemoteMetaDataInterface mdi = Utils.getMetaDataRemoteInterface(filename, metaServerPorts);
    
-
         //2. Get File-Handle
-        log.Info(this.clientID + " CREATE ::  Sending create request to Meta-Server");
+        log.Info("CLIENT :: c-" + this.clientID + " CREATE" + " Sending create request to Meta-Server");
         FileHandler fh = mdi.create(this.clientID, filename, nbDataServers, readQuorum, writeQuorum);
         while (fh.nbServers == 0) // if there aren't enough data servers meta server sends always nbServer = 0
         {
             System.Threading.Thread.Sleep(5000);
             fh = mdi.create(this.clientID, filename, nbDataServers, readQuorum, writeQuorum);
         }
-        log.Info(this.clientID + " CREATE ::  Received the File Handler of file: " + fh.filenameGlobal);
+        log.Info("CLIENT :: c-" + this.clientID + " CREATE" + " Received the File Handler of file: " + fh.filenameGlobal);
 
 
         //3. Contact Data-Servers to Prepare
-        log.Info(this.clientID + " CREATE ::  Initiating 2PC");
+        log.Info("CLIENT :: c-" + this.clientID + " CREATE" + " Initiating 2PC");
         string transactionID = Utils.generateTransactionID(); 
         foreach (string dataServerPort in fh.dataServersPorts)
         {
@@ -186,7 +181,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             IAsyncResult RemAr = RemoteDel.BeginInvoke(prepateDTO, RemoteCallback, null);
             //di.prepareCreate(this.clientID, filename); SYNC
         }
-        log.Info(this.clientID + " CREATE ::  2PC 1st Phase - Prepare Create Assync Calls Sent");
+        log.Info("CLIENT :: c-" + this.clientID + " CREATE" + " 2PC 1st Phase - Prepare Create Assync Calls Sent");
 
         while (true)
         {
@@ -197,7 +192,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                 {
                     if (createQUORUM[transactionID] >= fh.writeQuorum)
                     {
-                        log.Info(this.clientID + " CREATE :: Reached necessary Quorum of: " + fh.writeQuorum + " : number of machines that are prepared: " + createQUORUM[transactionID]);
+                        log.Info("CLIENT :: c-" + this.clientID + " CREATE" + " Reached necessary Quorum of: " + fh.writeQuorum + " : number of machines that are prepared: " + createQUORUM[transactionID]);
                         createQUORUM.Remove(transactionID);
                         break;
                     }
@@ -216,7 +211,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             IAsyncResult RemAr = RemoteDel.BeginInvoke(commitDTO, RemoteCallback, null);
             //di.commitCreate(this.clientID, filename);
         }
-        log.Info(this.clientID + " CREATE ::  2PC 2nd Phase - Commit Create Assync Calls Sent");
+        log.Info("CLIENT :: c-" + this.clientID + " CREATE" + " 2PC 2nd Phase - Commit Create Assync Calls Sent");
 
         while (true)
         {
@@ -227,7 +222,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                 {
                     if (createQUORUM[transactionID] >= fh.writeQuorum)
                     {
-                        log.Info(this.clientID + " CREATE :: Reached necessary Quorum of: " + fh.writeQuorum + " : number of machines that are prepared to commit: " + createQUORUM[transactionID]);
+                        log.Info("CLIENT :: c-" + this.clientID + " CREATE" + " Reached necessary Quorum of: " + fh.writeQuorum + " : number of machines that are prepared to commit: " + createQUORUM[transactionID]);
                         createQUORUM.Remove(transactionID);
                         break;
                     }
@@ -241,8 +236,8 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         
         //6. Tell Meta-Data Server to Confirm Creation
         MyRemoteMetaDataInterface mdiConfirm = Utils.getMetaDataRemoteInterface(filename, metaServerPorts);
-        mdiConfirm.confirmCreate(this.clientID, filename, true); 
-        log.Info(this.clientID + " CREATE :: Confirmation Sent to Meta-Data Server, operation complete");
+        mdiConfirm.confirmCreate(this.clientID, filename, true);
+        log.Info("CLIENT :: c-" + this.clientID + " CREATE" + " Confirmation Sent to Meta-Data Server, OPERATION COMPLETE");
         return;
     }
 
@@ -253,18 +248,19 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     
     public void open(string filename)
     {
+        log.Info("CLIENT :: c-" + this.clientID + " OPEN" + " Opening file: " + filename);
         FileHandler filehandler;
 
         //1. Check if file is already opened.
         if (isOpen(filename))
         {
-            Console.WriteLine("[CLIENT  open]:  The file is already opened!");
+            log.Info("CLIENT :: c-" + this.clientID + " OPEN" + " The file is already opened!");
             return;
         }
 
         //2. Check if there aren't 10 files already opened
         if (fileRegister.Count >= Constants.MAX_FILES_OPENED) {
-            Console.WriteLine("[CLIENT  open]:  Can't have 10 opened files at once!");
+            log.Info("CLIENT :: c-" + this.clientID + " OPEN" + " Can't have 10 opened files at once!");
             return;
         }
 
@@ -273,13 +269,13 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         filehandler = mdi.open(clientID, filename);
 
         if (filehandler == null){
-            Console.WriteLine("[CLIENT  open]:  MetaServer didn't opened the file!");
+            log.Info("CLIENT :: c-" + this.clientID + " OPEN" + " MetaServer didn't opened the file!");
             return;
         }
 
         //openFiles.Add(filename, filehandler);
         fileRegister.Add(filehandler);
-        Console.WriteLine("[CLIENT  open]:  Success!");
+        log.Info("CLIENT :: c-" + this.clientID + " OPEN" + " OPERATION SUCCESS");
         return;
     }
 
@@ -290,6 +286,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
     public void close(string filename)
     {
+        log.Info("CLIENT :: c-" + this.clientID + " OPEN" + " Closing file: " + filename);
         FileHandler filehandler = null;
         //1. Check if file is really open
         foreach (FileHandler fh in fileRegister){
@@ -301,7 +298,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         if (filehandler == null)
         {
-            Console.WriteLine("[CLIENT  close]:  The file you want to close isn't open!");
+            log.Info("CLIENT :: c-" + this.clientID + " OPEN" + " The file you want to close isn't open!");
             return;
         }
 
@@ -311,11 +308,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
         //4. Remove from Open Files 
         fileRegister.Remove(filehandler);
-        Console.WriteLine("[CLIENT  close]:  Success!");
+        log.Info("CLIENT :: c-" + this.clientID + " OPEN" + " OPERATION SUCCESS");
         return;
     }
-
-
 
 
 
@@ -333,7 +328,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
         prepareDeleteRemoteAsyncDelegate del = (prepareDeleteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
         TransactionDTO assyncResult = del.EndInvoke(ar);
-        log.Info(assyncResult.clientID + " DELETE ::  Call Back Received - PrepareDelete for transaction: " + assyncResult.transactionID);
+        log.Info("CLIENT :: c-" + assyncResult.clientID + " DELETE" + " Call Back Received - PrepareDelete for transaction: " + assyncResult.transactionID);
         if (assyncResult.success)
         {
             if (deleteQUORUM.ContainsKey(assyncResult.transactionID)) { deleteQUORUM[assyncResult.transactionID]++; }
@@ -346,7 +341,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
         commitDeleteRemoteAsyncDelegate del = (commitDeleteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
         TransactionDTO assyncResult = del.EndInvoke(ar);
-        log.Info(assyncResult.clientID + " DELETE ::  Call Back Received - CommitDelete for transaction: " + assyncResult.transactionID);
+        log.Info("CLIENT :: c-" + assyncResult.clientID + " DELETE" + " Call Back Received - CommitDelete for transaction: " + assyncResult.transactionID);
         if (assyncResult.success)
         {
             if (deleteQUORUM.ContainsKey(assyncResult.transactionID)) { deleteQUORUM[assyncResult.transactionID]++; }
@@ -359,20 +354,20 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
         //1. Find out which meta server to call
         MyRemoteMetaDataInterface mdi = Utils.getMetaDataRemoteInterface(filename, metaServerPorts);
-        log.Info(this.clientID + " DELETE ::  Meta-Server to Contact: " + Utils.whichMetaServer(filename));
+        log.Info("CLIENT :: c-" + this.clientID + " DELETE" + " Meta-Server to Contact: " + Utils.whichMetaServer(filename));
 
         
         //2. Invoke delete on meta server
-        log.Info(this.clientID + " DELETE ::  Sending create request to Meta-Server");
+        log.Info("CLIENT :: c-" + this.clientID + " DELETE" + " Sending create request to Meta-Server");
         FileHandler fh = mdi.delete(this.clientID, filename);
         if (fh == null) {
-            log.Info(this.clientID + " DELETE :: Meta Server doesn't have a reference of the file to delete!"); 
+            log.Info("CLIENT :: c-" + this.clientID + " DELETE" + " Meta Server doesn't have a reference of the file to delete!"); 
             return;
         }
-        log.Info(this.clientID + " DELETE ::  Received the File Handler of file: " + fh.filenameGlobal);
+        log.Info("CLIENT :: c-" + this.clientID + " DELETE" + " Received the File Handler of file: " + fh.filenameGlobal);
 
         //3. Contact data-server to prepare
-        log.Info(this.clientID + " DELETE ::  Initiating 2PC");
+        log.Info("CLIENT :: c-" + this.clientID + " DELETE" + " Initiating 2PC");
         string transactionID = Utils.generateTransactionID(); 
         foreach (string dataServerPort in fh.dataServersPorts)
         {
@@ -383,7 +378,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             IAsyncResult RemAr = RemoteDel.BeginInvoke(prepareDTO, RemoteCallback, null);
             //di.prepareDelete(this.clientID, fh.dataServersFiles[dataServerPort]); SYNC
         }
-        log.Info(this.clientID + " DELETE ::  2PC 1st Phase - Prepare Create Assync Calls Sent");
+        log.Info("CLIENT :: c-" + this.clientID + " DELETE" + " 2PC 1st Phase - Prepare Create Assync Calls Sent");
 
         while (true)
         {
@@ -395,14 +390,13 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                 {
                     if (deleteQUORUM[transactionID] >= fh.nbServers)
                     {
-                        log.Info(this.clientID + " DELETE :: Reached necessary Quorum(TOTAL) of: " + fh.nbServers + " : number of machines that are prepared: " + deleteQUORUM[transactionID]);
+                        log.Info("CLIENT :: c-" + this.clientID + " DELETE" + " Reached necessary Quorum(TOTAL) of: " + fh.nbServers + " : number of machines that are prepared: " + deleteQUORUM[transactionID]);
                         deleteQUORUM.Remove(transactionID);
                         break;
                     }
                 }
             }
         }
-
 
         //4. Contact data-servers to commit
         transactionID = Utils.generateTransactionID(); //Generating new transaction ID for Commit
@@ -415,7 +409,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             IAsyncResult RemAr = RemoteDel.BeginInvoke(prepareDTO, RemoteCallback, null);
             //di.commitDelete(this.clientID, fh.dataServersFiles[dataServerPort]); // SYNC
         }
-        log.Info(this.clientID + " DELETE ::  2PC 2nd Phase - Commit Delete Assync Calls Sent");
+        log.Info("CLIENT :: c-" + this.clientID + " DELETE" + " 2PC 2nd Phase - Commit Delete Assync Calls Sent");
 
         while (true)
         {
@@ -427,7 +421,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                 {
                     if (deleteQUORUM[transactionID] >= fh.nbServers)
                     {
-                        log.Info(this.clientID + " DELETE :: Reached necessary Quorum(TOTAL) of: " + fh.nbServers + " : number of machines that are prepared to commit: " + deleteQUORUM[transactionID]);
+                        log.Info("CLIENT :: c-" + this.clientID + " DELETE" + " Reached necessary Quorum(TOTAL) of: " + fh.nbServers + " : number of machines that are prepared to commit: " + deleteQUORUM[transactionID]);
                         deleteQUORUM.Remove(transactionID);
                         break;
                     }
@@ -438,15 +432,9 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         //5. Tell metaserver to confirm deletion
         MyRemoteMetaDataInterface mdiConfirm = Utils.getMetaDataRemoteInterface(filename, metaServerPorts);
         mdiConfirm.confirmDelete(this.clientID, fh, true);
-        log.Info(this.clientID + " DELETE ::  Confirmation Sent to Meta-Data Server, operation complete");
+        log.Info("CLIENT :: c-" + this.clientID + " DELETE" + " Confirmation Sent to Meta-Data Server, operation complete");
         return;
     }
-
-
-
-
-
-
 
 
     /*------------------------------------------------------------------------         
@@ -466,7 +454,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {    
         prepareWriteRemoteAsyncDelegate del = (prepareWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
         TransactionDTO assyncResult = del.EndInvoke(ar);
-        log.Info(assyncResult.clientID + " WRITE ::  Call Back Received - PrepareWrite for transaction: " + assyncResult.transactionID);
+        log.Info("CLIENT :: c-" + assyncResult.clientID + " WRITE" + " Call Back Received - PrepareWrite for transaction: " + assyncResult.transactionID);
         if (assyncResult.success)
         {
             if (writeQUORUM.ContainsKey(assyncResult.transactionID)) { writeQUORUM[assyncResult.transactionID]++; }
@@ -479,7 +467,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
         commitWriteRemoteAsyncDelegate del = (commitWriteRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
         TransactionDTO assyncResult = del.EndInvoke(ar);
-        log.Info(assyncResult.clientID + " WRITE ::  Call Back Received - CommitWrite for transaction: " + assyncResult.transactionID);
+        log.Info("CLIENT :: c-" + assyncResult.clientID + " WRITE" + " Call Back Received - CommitWrite for transaction: " + assyncResult.transactionID);
         if (assyncResult.success)
         {
             if (writeQUORUM.ContainsKey(assyncResult.transactionID)) { writeQUORUM[assyncResult.transactionID]++; }
@@ -496,34 +484,34 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         // 1.Find if this client has this file opened
         if (fileRegister.Count == 0 || fileRegisterIndex > fileRegister.Count || fileRegister[fileRegisterIndex] == null)
         {
-            log.Info(this.clientID + " WRITE ::  File: with register " + fileRegisterIndex + " is not open yet");
+            log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " File: with register " + fileRegisterIndex + " is not open yet");
             return;
         }
         fh = fileRegister[fileRegisterIndex];
-        log.Info(this.clientID + " WRITE ::  File: " + fileRegister[fileRegisterIndex].filenameGlobal + " is  open");
+        log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " File: " + fileRegister[fileRegisterIndex].filenameGlobal + " is  open");
         
 
         //2. Find out which Meta-Server to Call 
         MyRemoteMetaDataInterface mdi = Utils.getMetaDataRemoteInterface(fh.filenameGlobal, metaServerPorts);
-        log.Info(this.clientID + " WRITE ::  Meta-Server to Contact: " + Utils.whichMetaServer(fh.filenameGlobal));
+        log.Info("CLIENT :: c-" + this.clientID + " WRITE" + "Meta-Server to Contact: " + Utils.whichMetaServer(fh.filenameGlobal));
 
 
         //3. Contact metaserver for write operation & obtain the the most updated fileHandler (just because of versioning)
         fh = mdi.write(this.clientID, fh);
         if (fh == null)
         {
-            log.Info(this.clientID + " WRITE ::  Meta-Server didn't allow Write on File: " + Utils.whichMetaServer(fh.filenameGlobal));
+            log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " Meta-Server didn't allow Write on File: " + Utils.whichMetaServer(fh.filenameGlobal));
             return;
         }
 
         // Update the version
         fh.version = fh.version + 1;
 
-        log.Info("VERSION BEFORE PREPARE!!! " + fh.version);
+        log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " The version before prepare: " + fh.version);
 
 
         //4. Contact Data-Servers to Prepare
-        log.Info(this.clientID + " WRITE ::  Iniciating 2PC for File: " + Utils.whichMetaServer(fh.filenameGlobal));
+        log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " Iniciating 2PC for File: " + Utils.whichMetaServer(fh.filenameGlobal));
         string transactionID = Utils.generateTransactionID();
         foreach (string dataServerPort in fh.dataServersPorts)
         {
@@ -536,7 +524,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             IAsyncResult RemAr = RemoteDel.BeginInvoke(prepareDTO, RemoteCallback, null);
             //di.prepareWrite(this.clientID, fh.dataServersFiles[dataServerPort], byteArray); //SYNC
         }
-        log.Info(this.clientID + " WRITE ::  2PC 1st Phase Async Calls Sent");
+        log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " 2PC 1st Phase Async Calls Sent");
 
         while (true)
         {
@@ -548,7 +536,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                 {
                     if (writeQUORUM[transactionID] >= fh.writeQuorum)
                     {
-                        log.Info(this.clientID + " WRITE :: Reached necessary Quorum(TOTAL) of: " + fh.writeQuorum + " : number of machines that are prepared: " + writeQUORUM[transactionID]);
+                        log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " Reached necessary Quorum(TOTAL) of: " + fh.writeQuorum + " : number of machines that are prepared: " + writeQUORUM[transactionID]);
                         writeQUORUM.Remove(transactionID);
                         break;
                     }
@@ -578,7 +566,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                 {
                     if (writeQUORUM[transactionID] >= fh.writeQuorum)
                     {
-                        log.Info(this.clientID + " WRITE :: Reached necessary Quorum(TOTAL) of: " + fh.writeQuorum + " : number of machines that finished commit: " + writeQUORUM[transactionID]);
+                        log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " Reached necessary Quorum(TOTAL) of: " + fh.writeQuorum + " : number of machines that finished commit: " + writeQUORUM[transactionID]);
                         writeQUORUM.Remove(transactionID);
                         break;
                     }
@@ -596,15 +584,13 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         //Update client file handler and save the content in ByteArrayRegister
         fh.isLocked = false; //update the file handler on client side 
         fileRegister[fileRegisterIndex] = fh;
-        log.Info("VERSION AFTER COMMIT!!! " + fh.version);
-
+        log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " Version after commit: " + fh.version);
 
         byteArrayRegisterOLD[byteArrayRegisterIndex] = byteArray;
 
-        log.Info(this.clientID + " WRITE ::  Operation Success on File: " + Utils.whichMetaServer(fh.filenameGlobal));
+        log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " Operation Success on File: " + Utils.whichMetaServer(fh.filenameGlobal));
         return;
     }
-
 
 
     /* To be used for reference of byteArrayRegister */
@@ -619,15 +605,11 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         int byteArrayRegisterIndex = nextFreeByteArrayRegister();
         if (byteArrayRegisterIndex == -1)
         {
-            log.Info(this.clientID + " WRITE :: All ByteArrayRegisters are full, won't do the write");
+            log.Info("CLIENT :: c-" + this.clientID + " WRITE" + " All ByteArrayRegisters are full, won't do the write");
             return;
         }
         write(fileRegisterIndex, byteArrayRegisterIndex, byteArray);
     }
-
-
-
-
 
 
     /*------------------------------------------------------------------------         
@@ -643,7 +625,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     {
         readRemoteAsyncDelegate del = (readRemoteAsyncDelegate)((AsyncResult)ar).AsyncDelegate;
         TransactionDTO assyncResult = del.EndInvoke(ar);
-        log.Info(assyncResult.clientID + " READ ::  Call Back Received - " + assyncResult.transactionID + " Success? -> " + assyncResult.success);
+        log.Info("CLIENT :: c-" + assyncResult.clientID + " READ" + " Call Back Received - " + assyncResult.transactionID + " Success? -> " + assyncResult.success);
         if (assyncResult.success) { 
             if(readQUORUM.ContainsKey(assyncResult.transactionID)){
                  readQUORUM[assyncResult.transactionID].Add(assyncResult); 
@@ -660,15 +642,15 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
     public void read(int fileRegisterIndex, int semantics, int byteArrayRegisterIndex) 
     {
-        log.Info(this.clientID + " READ :: Semantics - " + semantics.ToString());
+        log.Info("CLIENT :: c-" + this.clientID + " Read" + " Semantics - " + semantics.ToString());
         
         //1.Find if this client has this file opened
         if (fileRegister.Count == 0 || fileRegisterIndex > fileRegister.Count || !isOpen(fileRegister[fileRegisterIndex].filenameGlobal))
         {
-            log.Info(this.clientID + " READ :: There is no file opened with that register - " + fileRegisterIndex);
+            log.Info("CLIENT :: c-" + this.clientID + " Read" + " There is no file opened with that register - " + fileRegisterIndex);
             return;
         }
-        log.Info(this.clientID + " READ :: We are going to Read File - " + fileRegister[fileRegisterIndex].filenameGlobal);
+        log.Info("CLIENT :: c-" + this.clientID + " Read" + " We are going to Read File - " + fileRegister[fileRegisterIndex].filenameGlobal);
         
         FileHandler fh = fileRegister[fileRegisterIndex];
 
@@ -683,7 +665,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             IAsyncResult RemAr = RemoteDel.BeginInvoke(readDTO, RemoteCallback, null);
             //content = di.read(fh.dataServersFiles[dataServerPort], semantics); //SYNC
         }
-        log.Info(this.clientID + " READ :: READ Assync Calls Sent");
+        log.Info("CLIENT :: c-" + this.clientID + " Read" + " Assync Calls Sent");
 
 
         byte[] content = null; //File Content
@@ -701,7 +683,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                     //log.Info("READQUORUM expected: " + fh.readQuorum);
                     if (readQUORUM[transactionID].Count() >= fh.readQuorum)
                     {
-                        log.Info(this.clientID + " READ :: Reached necessary Quorum of: " + fh.readQuorum + " : number of machines that are prepared: " + readQUORUM[transactionID].Count);
+                        log.Info("CLIENT :: c-" + this.clientID + " Read" + " Reached necessary Quorum of: " + fh.readQuorum + " : number of machines that are prepared: " + readQUORUM[transactionID].Count);
 
                         long higherVersion = 0L;
                         TransactionDTO bufferDTO = null;
@@ -716,7 +698,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                         if (semantics == Constants.DEFAULT) //Gives the most recent version of the Quorum
                         {
                             content = bufferDTO.filecontent;
-                            log.Info(this.clientID + " READ ::  DEFAULT - Higher Version: " + higherVersion);
+                            log.Info("CLIENT :: c-" + this.clientID + " Read" + " DEFAULT - Higher Version: " + higherVersion);
                             fh.version = higherVersion;
                         }
                         if (semantics == Constants.MONOTONIC) //Gives the most recent version of the Quorum, if this one is older than last read, return last read instead
@@ -727,7 +709,6 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                                 //1. Verificar se temos já no byteArrayRegister ou se está a null  
                                 //2. Se estiver a null usar o do loop(porque nunca tinha lido) 
                                 //3. Se não estiver a null usar o que esta no byteArrayRegister
-                                //Nota: Isto causa o problema que se tentar-mos usar um byteArrayRegister já usado, ele vai achar pode vir a achar que esse é o tal content que tem mais actualizado, corrigir isto para a versão beta
                                 if (byteArrayRegisterOLD[byteArrayRegisterIndex] == null) { content = bufferDTO.filecontent; }
                                 else { content = byteArrayRegisterOLD[byteArrayRegisterIndex]; }
                             }
@@ -736,7 +717,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                                 content = bufferDTO.filecontent;  //sacar o conteúdo do loopDTO e actualizar o filehandler
                                 fh.version = higherVersion;
                             }
-                            log.Info(this.clientID + " READ ::  MONOTONIC - Version: " + higherVersion);
+                            log.Info("CLIENT :: c-" + this.clientID + " MONOTONIC - Version: " + higherVersion);
                         }
                         readQUORUM.Remove(transactionID);
                         break;
@@ -746,7 +727,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
         byteArrayRegisterOLD.Insert(byteArrayRegisterIndex, content); //update byte register
 
-        log.Info(this.clientID + " READ :: Operation complete, file:  " + fileRegister[fileRegisterIndex].filenameGlobal + " has this content: \n\r " + System.Text.Encoding.Default.GetString(content));
+        log.Info("CLIENT :: c-" + this.clientID + " Read" + " Operation complete, file:  " + fileRegister[fileRegisterIndex].filenameGlobal + " has this content: \n\r " + System.Text.Encoding.Default.GetString(content));
         return;
     }
 
@@ -791,13 +772,18 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
         }
     }
 
+
+    /***************************************************************
+     *                          COPY
+     **************************************************************/ 
+
     public void copy(int reg1, int semantics, int reg2, string salt)
     {
         //look for the first available byteRegister,if all are ocupied overwrite the oldest
         int reg = nextFreeByteArrayRegister();
         if(reg == -1)
         {
-            log.Info(this.clientID + " ERROR: Copy :: All byteregisters ocupied");
+            log.Info("CLIENT :: c-" + this.clientID + " COPY" + " All ByteArrayRegisters are occupied");
             return;
         }
         read(reg1, semantics, reg);

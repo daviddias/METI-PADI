@@ -28,25 +28,25 @@ public interface MyRemoteDataInterface
     void showFilesinMutation();
 
     //usado pelo cliente
-    TransactionDTO prepareWrite(TransactionDTO dto);                                    //DONE
-    TransactionDTO commitWrite(TransactionDTO dto);                                     //DONE
-    TransactionDTO read(TransactionDTO dto);                                            //DONE
-    TransactionDTO prepareCreate(TransactionDTO dto);                                   //DONE
-    TransactionDTO commitCreate(TransactionDTO dto);                                    //DONE
-    TransactionDTO prepareDelete(TransactionDTO dto);                                   //DONE
-    TransactionDTO commitDelete(TransactionDTO dto);                                    //DONE
+    TransactionDTO prepareWrite(TransactionDTO dto);                                    
+    TransactionDTO commitWrite(TransactionDTO dto);                                     
+    TransactionDTO read(TransactionDTO dto);                                            
+    TransactionDTO prepareCreate(TransactionDTO dto);                                   
+    TransactionDTO commitCreate(TransactionDTO dto);                                    
+    TransactionDTO prepareDelete(TransactionDTO dto);                                   
+    TransactionDTO commitDelete(TransactionDTO dto);                                    
 
     //usado pelo meta-server
-    TransactionDTO transferFile(TransactionDTO dto, string address);                    //DONE 
+    TransactionDTO transferFile(TransactionDTO dto, string address);                     
 
     //usado pelo data-server
-    TransactionDTO receiveFile(TransactionDTO dto);                                     //DONE
+    TransactionDTO receiveFile(TransactionDTO dto);                                     
 
     //usado pelo puppet-master
-    void freeze();                                                                      //DONE
-    void unfreeze();                                                                    //DONE
-    void fail();                                                                        //DONE
-    void recover();                                                                     //DONE
+    void freeze();                                                                      
+    void unfreeze();                                                                    
+    void fail();                                                                        
+    void recover();                                                                     
     void dump();
 }
 
@@ -103,14 +103,13 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         mutationList = new List<MutationListItem>();
         fileAndVersion = new Dictionary<string, int>();
 
-
         string path = Environment.ExpandEnvironmentVariables("%HOMEDRIVE%%HOMEPATH%\\PADI-FS\\") + System.Diagnostics.Process.GetCurrentProcess().ProcessName + "-" + dataServerNumber;
 
         if (!Directory.Exists(path))
             Directory.CreateDirectory(path);
         
         Directory.SetCurrentDirectory(path);
-        log.Info("Data Server is up!");
+        log.Info("DATA SERVER is up and Running with dir:");
         log.Info(Directory.GetCurrentDirectory());
 
         myNumber = dataServerNumber;
@@ -119,7 +118,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
     //Metodos auxiliares
     public void showFilesinMutation() {
         foreach (MutationListItem item in mutationList){
-            Console.WriteLine(item.clientID + " " + item.filename + "Content: " + System.Text.Encoding.Default.GetString(item.byte_array));
+            log.Info("DATA SERVER - ClientID " + item.clientID + " " + item.filename + "Content: " + System.Text.Encoding.Default.GetString(item.byte_array));
         }
     }
 
@@ -135,15 +134,6 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         {
             sw.WriteLine(filename + ":" + fileAndVersion[filename]);
         }
-
-        //sw.WriteLine("MutationList");
-        //using (var ms = new MemoryStream())
-        //{
-        //    var formatter = new BinaryFormatter();
-        //    formatter.Serialize(ms, mutationList);
-        //    var bytes = Convert.ToBase64String(ms.ToArray());
-        //    sw.WriteLine(bytes);
-        //}
 
         sw.Close();
     }
@@ -167,19 +157,12 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         fileAndVersion.Clear();
 
         if(line.Equals("Files"))
-            //while (!line.Equals("MutationList"))
             while (!sr.EndOfStream)
             {
                 string[] l = sr.ReadLine().Split(':');
                 fileAndVersion.Add(l[0], Convert.ToInt32(l[1]));
                 line = sr.ReadLine();
             }
-
-        //line = sr.ReadLine();
-        //byte[] bytes = Convert.FromBase64String(line);
-        //MemoryStream stream = new MemoryStream(bytes);
-        //var formatter = new BinaryFormatter();
-        //formatter.Deserialize(stream);
 
         sr.Close();
     }
@@ -281,14 +264,14 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         if (isfailed == true)
         {
-            Console.WriteLine("[DATA_SERVER: read]    The server has failed!");
+            log.Info("READ The server has failed!");
             newDTO.success = false;
             return newDTO;
         }
 
         if (isfrozen == true)
         {
-            Console.WriteLine("[DATA_SERVER: read]    The server is frozen!");
+            log.Info("READ The server is frozen!");
 
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
@@ -302,7 +285,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         fs.Read(bytesRead, 0, Convert.ToInt32(fs.Length));
         fs.Close();
 
-        Console.WriteLine("[DATA_SERVER: read]    Success! : Content Read- " +  System.Text.Encoding.Default.GetString(bytesRead));
+        log.Info("READ Success! : Content Read- " + System.Text.Encoding.Default.GetString(bytesRead));
         newDTO.success = true;
         newDTO.filecontent = bytesRead;
         newDTO.version = fileAndVersion[dto.filenameForDataServer];
@@ -319,14 +302,14 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         if (isfailed == true)
         {
-            log.Info("CREATE :: PrepareCreate : This server is 'failed' can't comply with the request");
+            log.Info("PREPARECREATE This server is 'failed' can't comply with the request");
             newDTO.success = false;
             return newDTO;
         }
 
         if (isfrozen == true)
         {
-            log.Info("CREATE :: PrepareCreate : This server is 'frozen' can't comply with the request right now");
+            log.Info("PREPARECREATE This server is 'frozen' can't comply with the request right now");
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
@@ -335,7 +318,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         //Verifica a existencia do ficheiro
         if (File.Exists(dto.filenameForDataServer))
         {
-            log.Info("CREATE :: PrepareCreate : The file requested to create already exists");
+            log.Info("PREPARECREATE The file requested to create already exists");
             newDTO.success = false;
             return newDTO;
         }
@@ -343,7 +326,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         //Verifica se o ficheiro ja esta a ser alterado
         if (mutationList.Find(f => f.filename == dto.filenameForDataServer) != null)
         {
-            log.Info("CREATE :: PrepareCreate : The file requested to create is already being manipulated by other process");
+            log.Info("PREPARECREATE The file requested to create is already being manipulated by other process");
             newDTO.success = false;
             return newDTO;
         }
@@ -351,7 +334,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         MutationListItem mutationEntry = new MutationListItem(dto.filenameForDataServer, dto.clientID, null);
         mutationList.Add(mutationEntry);
 
-        log.Info("CREATE :: PrepareCreate : Operation Complete");
+        log.Info("PREPARECREATE Operation Complete");
         newDTO.success = true;
         return newDTO;
     }
@@ -362,13 +345,13 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
      
         if (isfailed == true){
-            log.Info("CREATE :: CommitCreate : This server is 'failed' can't comply with the request");
+            log.Info("COMMITCREATE This server is 'failed' can't comply with the request");
             newDTO.success = false;
             return newDTO;
         }
 
         if (isfrozen == true){
-            log.Info("CREATE :: CommitCreate : This server is 'frozen' can't comply with the request right now");
+            log.Info("COMMITCREATE This server is 'frozen' can't comply with the request right now");
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
@@ -376,7 +359,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         MutationListItem item = mutationList.Find(i => i.filename == dto.filenameForDataServer && i.clientID == dto.clientID);
         if (item == null){
-            log.Info("CREATE :: CommitCreate : There was no request before for 'Prepare' can't fast forward");          
+            log.Info("COMMITCREATE There was no request before for 'Prepare' can't fast forward");          
             newDTO.success = false;
             return newDTO;
         }
@@ -386,18 +369,10 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         fileAndVersion.Add(dto.filenameForDataServer, 0);
 
-        log.Info("CREATE :: CommitCreate : Operation complete by Client: " + dto.clientID + " for file: " + dto.filenameForDataServer);
+        log.Info("COMMITCREATE Operation complete by Client: " + dto.clientID + " for file: " + dto.filenameForDataServer);
         newDTO.success = true;
         return newDTO;
     }
-
-
-
-
-
-
-
-
 
 
     public TransactionDTO prepareDelete(TransactionDTO dto) {
@@ -405,14 +380,14 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         if (isfailed == true)
         {
-            log.Info("DELETE :: PrepareDelete : This server is 'failed' can't comply with the request");
+            log.Info("PREPAREDELETE This server is 'failed' can't comply with the request");
             newDTO.success = false;
             return newDTO;
         }
 
         if (isfrozen == true)
         {
-            log.Info("DELETE :: PrepareDelete : This server is 'frozen' can't comply with the request right now");
+            log.Info("PREPAREDELETE This server is 'frozen' can't comply with the request right now");
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
@@ -421,7 +396,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         // Verifica a existencia do ficheiro
         if (!File.Exists(dto.filenameForDataServer))
         {
-            log.Info("DELETE :: PrepareDelete : The requested file in this Data-Server does not exist, NAME: " + dto.filenameForDataServer);
+            log.Info("PREPAREDELETE The requested file in this Data-Server does not exist, NAME: " + dto.filenameForDataServer);
             newDTO.success = false;
             return newDTO;
         }
@@ -429,7 +404,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         // Verifica se o ficheiro já esta a ser alterado
         if (mutationList.Find(f => f.filename == dto.filenameForDataServer) != null)
         {
-            log.Info("DELETE :: PrepareDelete : The requested file in this Data-Server is being manipulated by another process");
+            log.Info("PREPAREDELETE The requested file in this Data-Server is being manipulated by another process");
             newDTO.success = false;
             return newDTO;
         }
@@ -437,7 +412,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         MutationListItem mutationEntry = new MutationListItem(dto.filenameForDataServer, dto.clientID, null);
         mutationList.Add(mutationEntry);
 
-        log.Info("DELETE :: PrepareDelete : Operation Complete");
+        log.Info("PREPAREDELETE Operation Complete");
         newDTO.success = true;
         return newDTO;
     }
@@ -447,14 +422,14 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         if (isfailed == true)
         {
-            log.Info("DELETE :: CommitDelete : This server is 'failed' can't comply with the request");
+            log.Info("COMMITDELETE This server is 'failed' can't comply with the request");
             newDTO.success = false;
             return newDTO;
         }
 
         if (isfrozen == true)
         {
-            log.Info("DELETE :: CommitDelete : This server is 'frozen' can't comply with the request right now");
+            log.Info("COMMITDELETE This server is 'frozen' can't comply with the request right now");
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
@@ -463,7 +438,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         MutationListItem item = mutationList.Find(i => i.filename == dto.filenameForDataServer && i.clientID == dto.clientID);
         if (item == null)
         {
-            log.Info("DELETE :: CommitDelete : Client: " + dto.clientID + " is trying to commit without prepare");
+            log.Info("COMMITDELETE Client: " + dto.clientID + " is trying to commit without prepare");
             newDTO.success = false;
             return newDTO;
         }
@@ -474,7 +449,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         fileAndVersion.Remove(dto.filenameForDataServer);
 
-        log.Info("DELETE :: CommitDelete : Operation Complete");
+        log.Info("COMMITDELETE Operation Complete");
         newDTO.success = true;
         return newDTO;
     }
@@ -486,7 +461,6 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
      *                           TRANSFER FILES
      *-----------------------------------------------------------------------*/
 
-
     public TransactionDTO transferFile(TransactionDTO dto, string nextDataServerAddress) {
         
         TransactionDTO newDTO = new TransactionDTO(dto.transactionID, dto.clientID, dto.filenameForDataServer);
@@ -496,14 +470,14 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         if (isfailed == true)
         {
-            log.Info("TRANSFER :: TransferFile : This server is 'failed' can't comply with the request");
+            log.Info("TRANSFER This server is 'failed' can't comply with the request");
             newDTO.success = false;
             return newDTO;
         }
 
         if (isfrozen == true)
         {
-            log.Info("TRANSFER :: transferFile : This server is 'frozen' can't comply with the request right now");
+            log.Info("TRANSFER This server is 'frozen' can't comply with the request right now");
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
@@ -512,7 +486,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         // Verifica a existencia do ficheiro
         if (!File.Exists(dto.filenameForDataServer))
         {
-            log.Info("TRANSFER :: transferFile : The requested file in this Data-Server does not exist, NAME: " + dto.filenameForDataServer);
+            log.Info("TRANSFER The requested file in this Data-Server does not exist, NAME: " + dto.filenameForDataServer);
             newDTO.success = false;
             return newDTO;
         }
@@ -520,7 +494,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         // Verifica se o ficheiro já esta a ser alterado
         if (mutationList.Find(f => f.filename == dto.filenameForDataServer) != null)
         {
-            log.Info("TRANSFER :: transferFile : The requested file in this Data-Server is being manipulated by another process");
+            log.Info("TRANSFER The requested file in this Data-Server is being manipulated by another process");
             newDTO.success = false;
             return newDTO;
         }
@@ -534,13 +508,13 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         bytesRead = new byte[fs.Length];
         fs.Read(bytesRead, 0, Convert.ToInt32(fs.Length));
         fs.Close();
-        log.Info("TRANSFER :: transferFile : Bytes from file to send were read successfully!");
+        log.Info("TRANSFER Bytes from file to send were read successfully!");
 
         dto.filecontent = bytesRead;
 
         MyRemoteDataInterface di = Utils.getRemoteDataServerObj(port);
         newDTO.success = di.receiveFile(dto).success;
-        log.Info("TRANSFER :: transferFile : Destination DataServer returned success = " + newDTO.success);
+        log.Info("TRANSFER Destination DataServer returned success = " + newDTO.success);
 
         if (!newDTO.success)
             return newDTO;
@@ -548,7 +522,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         File.GetAccessControl(dto.filenameForDataServer);
         File.Delete(dto.filenameForDataServer);
 
-        log.Info("TRANSFER :: transferFile :    File deleted successfuly! Operation Successful");
+        log.Info("TRANSFER File deleted successfuly! Operation Successful");
 
         return newDTO;
     }
@@ -559,14 +533,14 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         if (isfailed == true)
         {
-            log.Info("TRANSFER :: receiveFile : This server is 'failed' can't comply with the request");
+            log.Info("RECEIVEFILE This server is 'failed' can't comply with the request");
             newDTO.success = false;
             return newDTO;
         }
 
         if (isfrozen == true)
         {
-            log.Info("TRANSFER :: receiveFile : This server is 'frozen' can't comply with the request right now");
+            log.Info("RECEIVEFILE This server is 'frozen' can't comply with the request right now");
             Monitor.Enter(mutationList);
             Monitor.Wait(mutationList);
             Monitor.Exit(mutationList);
@@ -577,12 +551,12 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             MutationListItem item = mutationList.Find(i => i.filename == dto.filenameForDataServer);
             if (item == null)
             {
-                log.Info("TRANSFER :: receiveFile : Another process is mutating the file! receiveFile Failed!");
+                log.Info("RECEIVEFILE Another process is mutating the file! receiveFile Failed!");
                 newDTO.success = false;
                 return newDTO;
             }
 
-            log.Info("TRANSFER :: receiveFile : The file exists and it's is going to be overwritten!");
+            log.Info("RECEIVEFILE The file exists and it's is going to be overwritten!");
             File.WriteAllBytes(dto.filenameForDataServer, dto.filecontent);
             newDTO.success = true;
             return newDTO;
@@ -590,16 +564,14 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         if (!File.Exists(dto.filenameForDataServer))
         {
-            log.Info("TRANSFER :: receiveFile : The file does not exist and it is going to be created!");
+            log.Info("RECEIVEFILE The file does not exist and it is going to be created!");
             File.Create(dto.filenameForDataServer).Close();
             File.WriteAllBytes(dto.filenameForDataServer, dto.filecontent);
             newDTO.success = true;
             return newDTO;
         }
 
-        log.Info("TRANSFER :: receiveFile : ATENTION! Something went wrong receiving the file!");
-
-
+        log.Info("RECEIVEFILE Operation unsuccessful");
         newDTO.success = false;
         return newDTO; 
     }
@@ -615,47 +587,39 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         if (isfailed == true)
         {
-            Console.WriteLine("[DATA_SERVER: freeze]    Cannot freeze during server failure!");
+            log.Info("FREEZE Cannot freeze during server failure!");
             return;
         }
         isfrozen = true;
         timeOff = DateTime.Now; // save actual time
-        Console.WriteLine("[DATA_SERVER: freeze]    Success!");
+        log.Info("FREEZE Success!");
         return; 
     }
 
     public void unfreeze() {
-
-        //if (isfrozen == false)
-        //{
-        //    Console.WriteLine("[DATA_SERVER: unfreeze]    The server was not frozen!");
-        //    return;
-        //}
 
         isfrozen = false;
 
         if (!Monitor.IsEntered(mutationList))
             Monitor.Enter(mutationList);
 
-        Console.Write("Passaram " + Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString()).ToString() + " segundos\n\n");
+        log.Info("UNFREEZE Passaram " + Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString()).ToString() + " segundos\n\n");
 
         Monitor.PulseAll(mutationList);
         Monitor.Exit(mutationList);
 
         System.Threading.Thread.Sleep(50);
 
-
         // drop LOCKS if is off for time more than timeout
         if (Convert.ToInt32(Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString())) > TIMEOUT)
         {
             mutationList.Clear();
-            log.Info("[DATA_SERVER: unfreeze]    Mutation list was cleared due to time-out expiration! (" + Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString()).ToString() + " seconds)");
+            log.Info("UNFREEZE Mutation list was cleared due to time-out expiration! (" + Convert.ToDouble(DateTime.Now.Subtract(timeOff).TotalSeconds.ToString()).ToString() + " seconds)");
         }
 
-        
-        imAlive();
+        imAlive(); //Tell everyone =)
 
-        Console.WriteLine("[DATA_SERVER: unfreeze]    Sucess!");
+        log.Info("UNFREEZE Sucess!");
         return;
     }
 
@@ -664,7 +628,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
         //1. Is MetaServer Able to Respond (Fail)
         if (isfailed)
         {
-            log.Info("[DATA_SERVER: fail]    The server is on 'fail'!");
+            log.Info("FAIL The server is on 'fail'!");
             return;
         }
 
@@ -686,17 +650,12 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         isfailed = true;
         timeOff = DateTime.Now; // save actual time
-        Console.WriteLine("[DATA_SERVER: fail]    Success!");
+        log.Info("FAIL Success!");
         return; 
     }
 
     public void recover() {
-        //if (isfailed == false)
-        //{
-        //    Console.WriteLine("[DATA_SERVER: recover]    The server was not failed!");
-        //    return;
-        //}
-
+        
         recoverStateFromDisk();
 
         BinaryServerFormatterSinkProvider provider = new BinaryServerFormatterSinkProvider();
@@ -710,7 +669,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
 
         isfailed = false;
         imAlive();
-        Console.WriteLine("[DATA_SERVER: recover]    Success!");
+        log.Info("RECOVER Success!");
         return;
     }
 
@@ -725,7 +684,7 @@ public class MyRemoteDataObject : MarshalByRefObject, MyRemoteDataInterface
             UpdateRemoteAsyncDelegate RemoteUpdate = new UpdateRemoteAsyncDelegate(mdi[i].receiveAlive);
             IAsyncResult RemAr = RemoteUpdate.BeginInvoke((firstDataServerPort + myNumber).ToString(), null, null);
 
-            log.Info(" UPDATE SENDED:: Informed Meta-Data Server where I am present");
+            log.Info("IMALIVE Informed Meta-Data Server where I am present");
         }
     }
 

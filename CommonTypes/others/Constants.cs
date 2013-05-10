@@ -11,7 +11,7 @@ class Constants
     public const int MAX_FILES_OPENED = 10;
     public const int TIMEOUT = 1000; //Call timeout
     public const double LOADBALANCER_THRESHOLD = 1.2;   //20% of total average
-    public const int LOADBALANCER_CICLE_LIMIT = 30;      //load balance cicle limited to X iterations
+    public const int LOADBALANCER_CICLE_LIMIT = 80;      //load balance cicle limited to X iterations
 
 }
 
