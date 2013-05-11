@@ -1,7 +1,7 @@
 padiFS
 ======
 
-# IST Distributed Applications Course Project
+### IST Distributed Applications Course Project
 
 Authors 
 David Dias 
