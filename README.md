@@ -3,12 +3,9 @@ padiFS
 
 ### IST Distributed Applications Course Project
 
-Authors 
-
-David Dias 
-
-Rui Camacho
-
+Authors : 
+David Dias ;
+Rui Camacho ;
 Pedro Barroso
 
 Paper
