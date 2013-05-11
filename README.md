@@ -1,62 +1,15 @@
 padiFS
 ======
 
-IST Distributed Applications Course Project
+# IST Distributed Applications Course Project
 
+Authors 
+David Dias 
+Rui Camacho
+Pedro Barroso
 
-### Implementation status
-
-Items marked as "✘" are not planned for implementation. 
-Items marked as "✔" are complete and tested
-
-<table>
-  <thead>
-    <tr><th>Object / Feature</th><th>Status</th><th>Notes</th></tr>
-  </thead>
-  <tbody>
-    <tr> <td>Puppet Master                       </td> <td>    </td><td>     </td></tr>
-    <tr> <td>- UI                                </td> <td>✔   </td><td>    </td></tr>
-    <tr> <td>- Load Scripts                      </td> <td>✔   </td><td>    </td></tr>
-    <tr> <td>- Execute Script Step by Step       </td> <td>✔   </td><td>    </td></tr>
-    <tr> <td>- Start all other process           </td> <td>✔   </td><td>    </td></tr>
-    <tr> <td>- Get Remote Object References      </td> <td>     </td><td>    </td></tr>
-    
-    <tr> <td>Client                              </td> <td>    </td><td>     </td></tr>
-    <tr> <td>-                                   </td> <td>     </td><td>    </td></tr>
-    
-    <tr> <td>Meta-Data Server                    </td> <td>    </td><td>     </td></tr>
-    <tr> <td>-                                   </td> <td>    </td><td>     </td></tr>
-    
-    <tr> <td>Data-Server                         </td> <td>    </td><td>     </td></tr>
-    <tr> <td>-                                   </td> <td>    </td><td>     </td></tr>
-    
-    
-  </tbody>
-</table>
-
-
-### Logger notes
-
-...
-using log4net;
-...
-
-  class{
-    ...
-    private static readonly ILog log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-    ...
-    Method()
-    {
-    log.Debug("This is a DEBUG level message. The most VERBOSE level.");
-    log.Info("Extended information, with higher importance than the Debug call");
-    log.Warn("An unexpected but recoverable situation occurred");
-    log.Error("An unexpected error occurred, an exception was thrown, or is about to be thrown", ex);
-    log.Fatal("Meltdown!", ex);
-    }
-    ...
-  }
-
-
+Paper
+(soon)
 
 
 
