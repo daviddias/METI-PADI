@@ -1,0 +1,35 @@
+#LOAD BALANCING
+RECOVER m-0
+RECOVER m-1
+RECOVER m-2
+UNFREEZE d-0
+UNFREEZE d-1
+UNFREEZE d-2
+UNFREEZE d-3
+UNFREEZE d-4
+UNFREEZE d-5
+CREATE c-0 A 2 1 1
+CREATE c-1 B 2 1 1
+CREATE c-2 C 2 1 1
+CREATE c-3 D 2 1 1
+#Posso começar a executar tudo a grande!
+CREATE c-0 E 2 1 1
+CREATE c-1 F 2 1 1
+CREATE c-2 G 2 1 1
+CREATE c-3 H 2 1 1
+WRITE c-0 A "É tudo há grande!"
+WRITE c-1 B "É tudo há grande!"
+WRITE c-2 C "É tudo há grande!"
+WRITE c-3 D "É tudo há grande!"
+WRITE c-0 E "É tudo há grande!"
+WRITE c-1 F "É tudo há grande!"
+WRITE c-2 G "É tudo há grande!"
+WRITE c-3 H "É tudo há grande!"
+CLOSE c-0 A 
+CLOSE c-1 B 
+CLOSE c-2 C 
+CLOSE c-3 D 
+CLOSE c-0 E 
+CLOSE c-1 F 
+CLOSE c-2 G 
+CLOSE c-3 H

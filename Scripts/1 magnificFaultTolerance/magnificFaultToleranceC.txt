@@ -1,0 +1,9 @@
+#Fault Tolerance 3
+RECOVER m-0
+UNFREEZE d-0
+UNFREEZE d-1
+CREATE c-0 A 2 2 2
+FAIL d-0
+#Script B mas para WRITE
+WRITE c-0 0 "Banana"
+RECOVER d-0

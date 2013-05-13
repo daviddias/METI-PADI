@@ -1,0 +1,27 @@
+#File Responsability System
+RECOVER m-0
+RECOVER m-1
+RECOVER m-2
+UNFREEZE d-0
+UNFREEZE d-1
+UNFREEZE d-2
+UNFREEZE d-3
+CREATE c-0 A 2 2 2
+CREATE c-0 B 3 2 2
+CREATE c-0 C 4 2 2
+CREATE c-0 D 5 5 5
+#O C1 vai aceder aos mesmos Data Servers
+OPEN c-1 A
+OPEN c-1 B
+OPEN c-1 C
+OPEN c-1 D
+#Após a falha as responsabilidades vão ser diferentes, mas mesmo assim vai se manter um único coordenador por cada ficheiro
+FAIL m-0
+OPEN c-2 A
+OPEN c-2 B
+OPEN c-2 C
+OPEN c-2 D
+OPEN c-3 A
+OPEN c-3 B
+OPEN c-3 C
+OPEN c-3 D

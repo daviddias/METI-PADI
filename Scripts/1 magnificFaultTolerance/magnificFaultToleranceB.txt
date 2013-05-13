@@ -1,0 +1,8 @@
+#Fault Tolerance 2
+RECOVER m-0
+UNFREEZE d-0
+UNFREEZE d-1
+FAIL d-0
+#Só vai criar quando atingir o Quorum
+CREATE c-0 A 2 2 2
+RECOVER d-0

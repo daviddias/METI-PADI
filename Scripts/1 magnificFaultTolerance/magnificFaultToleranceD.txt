@@ -1,0 +1,20 @@
+#Fault Tolerance 4
+RECOVER m-0
+RECOVER m-1
+UNFREEZE d-0
+UNFREEZE d-1
+CREATE c-0 bananas 2 2 2
+FAIL d-0
+WRITE c-0 0 "ola"
+#Como está feito o lock, é negado a mutação ao ficheiro
+OPEN c-1 bananas
+WRITE c-1 0 "olas"
+FAIL m-0
+#Os locks são propagados, logo é também negado a mutação ao ficheiro
+OPEN c-2 bananas
+WRITE c-2 0 "olas"
+#O Write em C-0 já pode acontecer
+RECOVER d-0
+#O update da informação é propagado e o responsável fica de novo m-0
+RECOVER m-0
+WRITE c-1 0 "ola2"
