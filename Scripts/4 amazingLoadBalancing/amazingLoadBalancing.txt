@@ -42,7 +42,6 @@ LOADBALANCE m-0
 DUMP m-0
 #Just to show, any dump will show same result
 DUMP m-1
-LBDUMP m-0
 CREATE c-1 A1 3 3 3
 CREATE c-1 B1 3 3 3
 CREATE c-1 C1 3 3 3
@@ -73,8 +72,7 @@ CLOSE c-1 G1
 CLOSE c-1 H1
 CLOSE c-1 I1
 CLOSE c-1 J1
-#LBDUMP will show the same cause no LB was node
-LBDUMP m-0
+#DUMP will show the same cause no LB was node
 DUMP m-0
 #MOAR Data Servers
 UNFREEZE d-5
@@ -85,7 +83,6 @@ UNFREEZE d-9
 #More loadbalancing
 LOADBALANCE m-0
 DUMP m-0
-LBDUMP m-0
 CREATE c-2 A2 3 3 3
 CREATE c-2 B2 3 3 3
 CREATE c-2 C2 3 3 3
@@ -118,5 +115,4 @@ CLOSE c-2 I2
 CLOSE c-2 J2
 #More loadbalancing
 LOADBALANCE m-0
-DUMP m-0
-LBDUMP m-0
+DUMP m-0s

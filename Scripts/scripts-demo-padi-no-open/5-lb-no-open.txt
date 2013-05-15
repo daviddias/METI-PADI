@@ -1,0 +1,44 @@
+RECOVER m-0
+RECOVER m-1
+RECOVER m-2
+UNFREEZE d-0
+UNFREEZE d-1
+UNFREEZE d-2
+UNFREEZE d-3
+UNFREEZE d-4
+CREATE c-0 f1 1 1 1
+CREATE c-0 f2 1 1 1
+CREATE c-0 f3 1 1 1
+CREATE c-0 f4 1 1 1
+CREATE c-0 f5 1 1 1
+CREATE c-0 f6 1 1 1
+CREATE c-0 f7 1 1 1
+CREATE c-0 f8 1 1 1
+CREATE c-0 f9 1 1 1
+CREATE c-0 f0 1 1 1
+DUMP d-0
+DUMP d-1
+DUMP d-2
+DUMP d-3
+DUMP d-4
+DUMP m-0
+DUMP m-1
+DUMP m-2
+WRITE c-0 0 "Text contents of the file. Contents are a string delimited by double quotes as this one"
+WRITE c-0 1 "Text contents of the file. Contents are a string delimited by double quotes as this one"
+WRITE c-0 2 "Text contents of the file. Contents are a string delimited by double quotes as this one"
+WRITE c-0 3 "Text contents of the file. Contents are a string delimited by double quotes as this one"
+WRITE c-0 4 "Text contents of the file. Contents are a string delimited by double quotes as this one"
+WRITE c-0 5 "Text contents of the file. Contents are a string delimited by double quotes as this one"
+WRITE c-0 6 "Text contents of the file. Contents are a string delimited by double quotes as this one"
+WRITE c-0 7 "Text contents of the file. Contents are a string delimited by double quotes as this one"
+WRITE c-0 8 "Text contents of the file. Contents are a string delimited by double quotes as this one"
+WRITE c-0 9 "Text contents of the file. Contents are a string delimited by double quotes as this one"
+DUMP d-0
+DUMP d-1
+DUMP d-2
+DUMP d-3
+DUMP d-4
+DUMP m-0
+DUMP m-1
+DUMP m-2

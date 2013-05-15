@@ -100,7 +100,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
     /* File is open */
     private int nextFreeByteArrayRegister()
     {
-        for(int i = 0; i < byteArrayRegisterOLD.Capacity; i++)
+        for(int i = 0; i < 10; i++)
         {
             if (byteArrayRegisterOLD[i] == null)
                 return i;
@@ -304,7 +304,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
 
     public void close(string filename)
     {
-        log.Info("CLIENT :: c-" + this.clientID + " OPEN" + " Closing file: " + filename);
+        log.Info("CLIENT :: c-" + this.clientID + " CLOSE" + " Closing file: " + filename);
         FileHandler filehandler = null;
         //1. Check if file is really open
         foreach (FileHandler fh in fileRegister){
@@ -806,6 +806,10 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
             String[] p = { " ", "\t", ", " };
             string[] parsed = line.Split(p, StringSplitOptions.None);
 
+            int DEFAULT = 1;
+            int MONOTONIC = 2;
+            int semantic;
+
             switch (parsed[0])
             {
                 case "CREATE": create(parsed[2], Convert.ToInt32(parsed[3]), Convert.ToInt32(parsed[4]), Convert.ToInt32(parsed[5])); break;
@@ -813,9 +817,7 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                 case "OPEN": open(parsed[2]); break;
                 case "CLOSE": close(parsed[2]); break;
                 case "READ":
-                    int DEFAULT = 1;
-                    int MONOTONIC = 2;
-                    int semantic;
+                    
                     switch (parsed[3])
                     {
                         case "default": semantic = DEFAULT; break;
@@ -832,6 +834,24 @@ public class remoteClient : MarshalByRefObject, remoteClientInterface
                     }
                     else { write(Convert.ToInt32(parsed[2]), Convert.ToInt32(parsed[3])); }
                     break;
+                case "COPY":
+                    for (int i = 6; i < parsed.Length; i++)
+                        parsed[5] += " " + parsed[i];
+
+                    //int DEFAULT = 1;
+                    //int MONOTONIC = 2;
+                    //int semantic;
+
+                    switch (parsed[3])
+                     {
+                        case "default": semantic = DEFAULT; break;
+                        case "monotonic": semantic = MONOTONIC; break;
+                        default: semantic = DEFAULT; break;
+                    }
+
+                    copy(Convert.ToInt32(parsed[2]), semantic, Convert.ToInt32(parsed[4]), parsed[5]);
+                    break;
+
             }
         }
     }
