@@ -8,8 +8,8 @@ David Dias ;
 Rui Camacho ;
 Pedro Barroso
 
-Paper
-(soon)
+Paper : 
+On the 'Paper' folder
 
 
 
